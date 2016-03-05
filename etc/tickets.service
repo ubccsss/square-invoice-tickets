@@ -1,0 +1,13 @@
+[Unit]
+Description=tickets - a ticket system for UBC CSSS
+
+[Service]
+Type=simple
+User=tickets
+Group=tickets
+WorkingDirectory=/srv/square-invoice-tickets
+ExecStart=/srv/square-invoice-tickets/square-invoice-tickets
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
