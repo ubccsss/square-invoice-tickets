@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/abbot/go-http-auth"
 	"github.com/asaskevich/govalidator"
@@ -34,6 +36,7 @@ const (
 
 func main() {
 	flag.Parse()
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	s, err := newServer()
 	if err != nil {
@@ -93,11 +96,17 @@ type hookedResponseWriter struct {
 
 func (hrw *hookedResponseWriter) WriteHeader(status int) {
 	if status == 404 {
-		hrw.ignore = true
-		index(hrw.ResponseWriter, hrw.r)
-	} else {
-		hrw.ResponseWriter.WriteHeader(status)
+		url := hrw.r.URL.String()
+		if !(strings.HasPrefix(url, "/api") ||
+			strings.HasPrefix(url, "/elements") ||
+			strings.HasPrefix(url, "/bower_components")) {
+
+			hrw.ignore = true
+			index(hrw.ResponseWriter, hrw.r)
+			return
+		}
 	}
+	hrw.ResponseWriter.WriteHeader(status)
 }
 
 func (hrw *hookedResponseWriter) Write(p []byte) (int, error) {
@@ -122,7 +131,11 @@ func (s *server) listen() error {
 
 func index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	http.ServeFile(w, r, "static/app.html")
+	if *debug {
+		http.ServeFile(w, r, "static/app.html")
+	} else {
+		http.ServeFile(w, r, "static/index.html")
+	}
 }
 
 func (s *server) purchaseRequests(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
