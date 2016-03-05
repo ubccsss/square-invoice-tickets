@@ -27,6 +27,14 @@ paper-button {
       pointer-events: none;
       opacity: 0.8;
     }
+    @media (min-width: 900px) {
+      .inline paper-input, .inline gold-email-input, .inline gold-phone-input {
+        display: inline-block !important;
+      }
+    }
+    .price span {
+      @apply(--paper-font-display1);
+    }
     </style>
     <h1>Happily Ever After - CSSS Year End Gala Tickets</h1>
     <p>The annual dinner and dance event will take place on March 26th from 6 - 11 pm at Diamond Ballroom (1495 W8th Avenue). There will be drinks, a photo booth, and not to mention an AWESOME view! Fill out this form to receive tickets and we will send you an email with instructions regarding payment shortly. Fill out the names of your group members if you decide to purchase a group ticket - only one submission is required per group.</p>
@@ -38,33 +46,72 @@ paper-button {
       on-iron-form-response="response"
       >
       <div class="form-inner" disabled$="[[submitting]]">
+        <div class="inline">
         <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
         <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
         <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
         <gold-phone-input name="PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+        </div>
 
-        <paper-dropdown-menu label="Ticket Type" name="RawType" required value="{{type}}">
+        <paper-dropdown-menu label="Ticket Type" name="RawType" required value="{{Type}}">
           <paper-menu class="dropdown-content" selected="0">
-            <paper-item>Individual - $25</paper-item>
-            <paper-item>Group (4 tickets) - $80</paper-item>
+            <paper-item>Individual</paper-item>
+            <paper-item>Group (4 tickets)</paper-item>
           </paper-menu>
         </paper-dropdown-menu>
         <template is="dom-if" if="[[group(type)]]">
           <div class="indent">
-            <paper-input name="GroupMember2" label="Group Member 2 Name" required auto-validate></paper-input>
-            <paper-input name="GroupMember3" label="Group Member 3 Name" required auto-validate></paper-input>
-            <paper-input name="GroupMember4" label="Group Member 4 Name" required auto-validate></paper-input>
+            <label>Group Member 2</label>
+            <div class="inline">
+              <paper-input name="GroupMember2FirstName" label="First Name" required auto-validate></paper-input>
+              <paper-input name="GroupMember2LastName" label="Last Name" required auto-validate></paper-input>
+              <gold-email-input name="GroupMember2Email" label="Email Address" required auto-validate></gold-email-input>
+              <gold-phone-input name="GroupMember2PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+            </div>
+            <label>Group Member 3</label>
+            <div class="inline">
+              <paper-input name="GroupMember3FirstName" label="First Name" required auto-validate></paper-input>
+              <paper-input name="GroupMember3LastName" label="Last Name" required auto-validate></paper-input>
+              <gold-email-input name="GroupMember3Email" label="Email Address" required auto-validate></gold-email-input>
+              <gold-phone-input name="GroupMember3PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+            </div>
+            <label>Group Member 4</label>
+            <div class="inline">
+              <paper-input name="GroupMember4FirstName" label="First Name" required auto-validate></paper-input>
+              <paper-input name="GroupMember4LastName" label="Last Name" required auto-validate></paper-input>
+              <gold-email-input name="GroupMember4Email" label="Email Address" required auto-validate></gold-email-input>
+              <gold-phone-input name="GroupMember4PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+            </div>
           </div>
         </template>
         <paper-input type="number" name="RawAfterPartyCount" label="How many people will be attending the after party? (Party depends on interest.)" required></paper-input>
-        <paper-input name="PromoCode" label="Promo Code (CSSS Officers + Executives only)"></paper-input>
+        <paper-input name="PromoCode" label="Promo Code (CSSS Officers + Executives only)" value="{{PromoCode}}"></paper-input>
+        <template is="dom-if" if="[[details.PromoCode]]">
+          <p>
+            Promo Code <span>[[details.PromoCode.ID]]</span>:
+            <template is="dom-if" if="[[details.PromoCode.Amount]]">
+              $<span>[[details.PromoCode.Amount]]</span>
+            </template>
+            <template is="dom-if" if="[[details.PromoCode.Percent]]">
+              %<span>[[details.PromoCode.Percent]]</span>
+            </template>
+            off
+          </p>
+        </template>
       </div>
       <div class="error">[[error]]</div>
       <br>
       <center>
-        <paper-button raised on-tap="submit">Buy</paper-button>
+        <paper-button raised on-tap="submit">Buy - $<span>[[details.Price]]</span></paper-button>
       </center>
     </form>
+
+    <iron-ajax
+            auto
+            url="[[cartDetailsURL(Type, PromoCode)]]"
+            handle-as="json"
+            last-response="{{details}}"
+            debounce-duration="300"></iron-ajax>
   </template>
  <script>
   Polymer({
@@ -94,6 +141,9 @@ paper-button {
     },
     group: function(type) {
       return type.includes('Group');
+    },
+    cartDetailsURL: function(Type, PromoCode) {
+      return '/api/details?type='+encodeURIComponent(Type)+'&code='+encodeURIComponent(PromoCode);
     }
   });
   </script>

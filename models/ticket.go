@@ -3,18 +3,33 @@ package models
 import "time"
 
 type PurchaseRequest struct {
-	ID                                       int
-	FirstName                                string `valid:"required"`
-	LastName                                 string `valid:"required"`
-	Email                                    string `valid:"required,email"`
-	PhoneNumber                              string `valid:"required"`
-	RawType                                  string `valid:"required"`
-	Type                                     PurchaseType
-	GroupMember2, GroupMember3, GroupMember4 string
-	RawAfterPartyCount                       string
-	AfterPartyCount                          int
-	PromoCode                                string
-	Charged                                  float32
+	ID          int
+	FirstName   string `valid:"required"`
+	LastName    string `valid:"required"`
+	Email       string `valid:"required,email"`
+	PhoneNumber string `valid:"required"`
+	RawType     string `valid:"required"`
+	Type        PurchaseType
+
+	GroupMember2FirstName   string
+	GroupMember2LastName    string
+	GroupMember2Email       string
+	GroupMember2PhoneNumber string
+
+	GroupMember3FirstName   string
+	GroupMember3LastName    string
+	GroupMember3Email       string
+	GroupMember3PhoneNumber string
+
+	GroupMember4FirstName   string
+	GroupMember4LastName    string
+	GroupMember4Email       string
+	GroupMember4PhoneNumber string
+
+	RawAfterPartyCount string
+	AfterPartyCount    int
+	PromoCode          string
+	Charged            float32
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

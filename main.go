@@ -77,6 +77,7 @@ func newServer() (*server, error) {
 	api.HandleFunc("/promoCodes", auth.Wrap(s.promoCodes))
 	api.HandleFunc("/tickets", auth.Wrap(s.tickets))
 	api.HandleFunc("/ticket/{id}", s.ticket)
+	api.HandleFunc("/details", s.details)
 
 	apiPost := api.Methods("POST").Subrouter()
 	apiPost.HandleFunc("/buy", s.buy)
@@ -237,26 +238,19 @@ func (s *server) promoCodes(w http.ResponseWriter, r *auth.AuthenticatedRequest)
 	}
 }
 
-func (s *server) buy(w http.ResponseWriter, r *http.Request) {
-	var req models.PurchaseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.err(w, err, 400)
-		return
+func (s *server) getPromoCode(code string) (*models.PromoCode, error) {
+	var promoCode *models.PromoCode
+	if code != "" {
+		var pc models.PromoCode
+		if err := s.db.Where("id = ?", code).First(&pc).Error; err != nil {
+			return nil, err
+		}
+		promoCode = &pc
 	}
-	if strings.Contains(req.RawType, "Group") {
-		req.Type = models.Group
-	}
-	count, err := strconv.Atoi(req.RawAfterPartyCount)
-	if err != nil {
-		s.err(w, err, 400)
-		return
-	}
-	req.AfterPartyCount = count
-	if err := s.ValidatePurchaseRequest(&req); err != nil {
-		s.err(w, err, 400)
-		return
-	}
+	return promoCode, nil
+}
 
+func (s *server) priceEstimate(req *models.PurchaseRequest) (float32, error) {
 	// Price code
 	basePrice := float32(priceIndividual)
 	switch req.Type {
@@ -264,15 +258,81 @@ func (s *server) buy(w http.ResponseWriter, r *http.Request) {
 		basePrice = priceGroup
 	}
 
-	var promoCode models.PromoCode
-	if req.PromoCode != "" {
-		if err := s.db.Where("id = ?", req.PromoCode).First(&promoCode).Error; err != nil {
-			s.err(w, err, 500)
-			return
-		}
+	promoCode, err := s.getPromoCode(req.PromoCode)
+	if err != nil {
+		return 0, err
 	}
 
-	req.Charged = basePrice*promoCode.Percent - promoCode.Amount
+	if promoCode != nil {
+		basePrice = basePrice*(1-promoCode.Percent) - promoCode.Amount
+	}
+
+	return basePrice, nil
+}
+
+type DetailsResponse struct {
+	PromoCode *models.PromoCode
+	Price     string
+}
+
+func (s *server) details(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	req := &models.PurchaseRequest{
+		PromoCode: r.FormValue("code"),
+		RawType:   r.FormValue("type"),
+	}
+	if err := processReq(req); err != nil {
+		s.err(w, err, 400)
+		return
+	}
+	promoCode, err := s.getPromoCode(req.PromoCode)
+	if err != nil {
+		s.err(w, err, 400)
+		return
+	}
+	price, err := s.priceEstimate(req)
+	if err != nil {
+		s.err(w, err, 500)
+		return
+	}
+	json.NewEncoder(w).Encode(DetailsResponse{PromoCode: promoCode, Price: fmt.Sprintf("%.2f", price)})
+}
+
+func processReq(req *models.PurchaseRequest) error {
+	if strings.Contains(req.RawType, "Group") {
+		req.Type = models.Group
+	}
+	if len(req.RawAfterPartyCount) > 0 {
+		count, err := strconv.Atoi(req.RawAfterPartyCount)
+		if err != nil {
+			return err
+		}
+		req.AfterPartyCount = count
+	}
+	return nil
+}
+
+func (s *server) buy(w http.ResponseWriter, r *http.Request) {
+	var req models.PurchaseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.err(w, err, 400)
+		return
+	}
+	if err := processReq(&req); err != nil {
+		s.err(w, err, 400)
+		return
+	}
+	if err := s.ValidatePurchaseRequest(&req); err != nil {
+		s.err(w, err, 400)
+		return
+	}
+
+	price, err := s.priceEstimate(&req)
+	if err != nil {
+		s.err(w, err, 500)
+		return
+	}
+	req.Charged = price
 
 	if err := s.db.Create(&req).Error; err != nil {
 		s.err(w, err, 500)
