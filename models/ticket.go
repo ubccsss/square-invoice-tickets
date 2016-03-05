@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type PurchaseRequest struct {
 	ID          int
@@ -34,6 +37,8 @@ type PurchaseRequest struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time
+
+	Tickets []Ticket
 }
 
 type PromoCode struct {
@@ -54,13 +59,21 @@ const (
 )
 
 type Ticket struct {
-	ID          string
-	FirstName   string
-	LastName    string
-	PhoneNumber string
-	Email       string
+	ID                string
+	PurchaseRequestID int
+	FirstName         string
+	LastName          string
+	PhoneNumber       string
+	Email             string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time
+}
+
+func (t Ticket) URL() string {
+	return "http://ticket.fn.lc/ticket/" + t.ID
+}
+func (t Ticket) HTML() string {
+	return fmt.Sprintf(`<a href="%s">%s</a><br>`, t.URL(), t.URL())
 }

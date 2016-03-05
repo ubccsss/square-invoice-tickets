@@ -19,7 +19,10 @@ import (
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/jaytaylor/html2text"
 	"github.com/jinzhu/gorm"
+	"github.com/mailgun/mailgun-go"
+	"github.com/vanng822/go-premailer/premailer"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -29,8 +32,10 @@ var (
 	debug         = flag.Bool("debug", false, "whether to run in debug mode")
 	adminPassword = flag.String("pass", "", "the md5 hash of the admin password")
 
-	squareEmail = flag.String("squareEmail", "", "the square email address")
-	squarePass  = flag.String("squarePass", "", "the square password")
+	squareEmail   = flag.String("squareEmail", "", "the square email address")
+	squarePass    = flag.String("squarePass", "", "the square password")
+	mailgunKey    = flag.String("mg", "", "the mailgun api key")
+	mailgunPubKey = flag.String("mgPub", "", "the mailgun api pubkey")
 )
 
 const (
@@ -51,6 +56,7 @@ func main() {
 
 type server struct {
 	db gorm.DB
+	mg mailgun.Mailgun
 }
 
 func newServer() (*server, error) {
@@ -70,6 +76,8 @@ func newServer() (*server, error) {
 	if err := db.AutoMigrate(&models.Ticket{}).Error; err != nil {
 		return nil, err
 	}
+
+	s.mg = mailgun.NewMailgun("ubccsss.org", *mailgunKey, "")
 
 	log.Printf("Password hash %s", *adminPassword)
 	auth := auth.NewBasicAuthenticator("localhost:8383", s.secret)
@@ -131,6 +139,8 @@ func (nfh NotFoundHook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) listen() error {
+	go s.pollSquare()
+
 	log.Printf("Listening on %s", *addr)
 	return http.ListenAndServe(*addr, handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 }
@@ -187,6 +197,11 @@ func (s *server) square(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	if err := square.Login(*squareEmail, *squarePass); err != nil {
 		s.err(w, err, 500)
 	}
+	nav, err := square.GetNavigation()
+	if err != nil {
+		s.err(w, err, 500)
+	}
+	log.Println(nav)
 }
 
 func (s *server) tickets(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -393,4 +408,125 @@ func (s server) secret(user, realm string) string {
 		return *adminPassword
 	}
 	return ""
+}
+
+func newTicket(first, last, phone, email string) models.Ticket {
+	id := petname.Generate(3, "-")
+	return models.Ticket{
+		ID:          id,
+		FirstName:   first,
+		LastName:    last,
+		PhoneNumber: phone,
+		Email:       email,
+	}
+}
+
+func (s *server) pollSquare() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for _ = range ticker.C {
+		if err := square.Login(*squareEmail, *squarePass); err != nil {
+			log.Println("square err", err)
+			continue
+		}
+		invoices, err := square.Invoices()
+		if err != nil {
+			log.Println("square err", err)
+			continue
+		}
+		for _, invoice := range invoices {
+			if !strings.HasPrefix(invoice.MerchantInvoiceNumber, "PurchaseRequest ") {
+				continue
+			}
+			bits := strings.Split(invoice.MerchantInvoiceNumber, " ")
+			if len(bits) != 2 {
+				continue
+			}
+			id, err := strconv.Atoi(bits[1])
+			if err != nil {
+				if err != nil {
+					log.Println("invoice parse err", err)
+					continue
+				}
+			}
+			var pr models.PurchaseRequest
+			if err := s.db.Find(&pr, id).Association("Tickets").Find(&pr.Tickets).Error; err != nil {
+				log.Println("db err", err)
+				continue
+			}
+			if len(pr.Tickets) == 0 && invoice.State == "PAID" {
+				log.Printf("Found paid invoice %+v %+v", invoice, pr)
+				var tickets []models.Ticket
+				tickets = append(tickets, newTicket(pr.FirstName, pr.LastName, pr.PhoneNumber, pr.Email))
+
+				if pr.Type == models.Group {
+					tickets = append(tickets, newTicket(pr.GroupMember2FirstName,
+						pr.GroupMember2LastName, pr.GroupMember2PhoneNumber, pr.GroupMember2Email))
+					tickets = append(tickets, newTicket(pr.GroupMember3FirstName,
+						pr.GroupMember3LastName, pr.GroupMember3PhoneNumber, pr.GroupMember3Email))
+					tickets = append(tickets, newTicket(pr.GroupMember4FirstName,
+						pr.GroupMember4LastName, pr.GroupMember4PhoneNumber, pr.GroupMember4Email))
+				}
+				for _, ticket := range tickets {
+					if err := s.db.Create(&ticket).Error; err != nil {
+						log.Println("db err", err)
+						return
+					}
+				}
+				if err := s.db.First(&pr, id).Update("Tickets", tickets).Error; err != nil {
+					log.Println("db err", err)
+					continue
+				}
+				for i, ticket := range tickets {
+					email := `<p>Hey ` + ticket.FirstName + `,</p>
+					<p>Here's your tickets for Happily Ever After - CSSS Year End Gala:</p>
+					<p>`
+					email += ticket.HTML()
+
+					if i == 0 {
+						for _, ticket := range tickets[1:] {
+							email += ticket.HTML()
+						}
+					}
+					email += `</p><p>See you at the gala!<br>The CSSS</p>`
+					if err := SendEmail(ticket.Email, "Happily Ever After - CSSS Year End Gala Tickets", email); err != nil {
+						log.Println("send email err", err)
+					}
+				}
+			}
+		}
+	}
+}
+
+func SendEmail(to, subj, body string) error {
+	pm := premailer.NewPremailerFromString(body, premailer.NewOptions())
+	message, err := pm.Transform()
+	if err != nil {
+		return err
+	}
+
+	mg := NewMG()
+
+	text, err := html2text.FromString(message)
+	if err != nil {
+		return err
+	}
+	m := mg.NewMessage(
+		"UBC CSSS <noreply@ubccsss.org>",
+		subj,
+		text,
+		to,
+	)
+	m.SetHtml(message)
+	log.Printf("To: %s\nSubj: %s\nText:\n%sHTML:\n%s", to, subj, text, message)
+	_, id, err := mg.Send(m)
+	if err != nil {
+		return err
+	}
+	log.Println(id)
+	return nil
+}
+
+func NewMG() mailgun.Mailgun {
+	return mailgun.NewMailgun("ubccsss.org", *mailgunKey, *mailgunPubKey)
 }
