@@ -15,6 +15,7 @@ import (
 	"github.com/abbot/go-http-auth"
 	"github.com/asaskevich/govalidator"
 	"github.com/d4l3k/square-invoice-tickets/models"
+	"github.com/d4l3k/square-invoice-tickets/square"
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -27,6 +28,9 @@ var (
 	addr          = flag.String("addr", ":8383", "the address to listen on")
 	debug         = flag.Bool("debug", false, "whether to run in debug mode")
 	adminPassword = flag.String("pass", "", "the md5 hash of the admin password")
+
+	squareEmail = flag.String("squareEmail", "", "the square email address")
+	squarePass  = flag.String("squarePass", "", "the square password")
 )
 
 const (
@@ -76,6 +80,7 @@ func newServer() (*server, error) {
 	api.HandleFunc("/purchaseRequests", auth.Wrap(s.purchaseRequests))
 	api.HandleFunc("/promoCodes", auth.Wrap(s.promoCodes))
 	api.HandleFunc("/tickets", auth.Wrap(s.tickets))
+	api.HandleFunc("/square", auth.Wrap(s.square))
 	api.HandleFunc("/ticket/{id}", s.ticket)
 	api.HandleFunc("/details", s.details)
 
@@ -174,6 +179,13 @@ func (s *server) ticket(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(ticket); err != nil {
 		s.err(w, err, 500)
 		return
+	}
+}
+
+func (s *server) square(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := square.Login(*squareEmail, *squarePass); err != nil {
+		s.err(w, err, 500)
 	}
 }
 
