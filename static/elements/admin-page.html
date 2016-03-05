@@ -1,0 +1,155 @@
+<dom-module id="admin-page">
+  <template>
+    <style>
+h1 {
+  @apply(--h1-style);
+}
+p {
+  @apply(--paper-font-body2);
+}
+paper-button {
+  background-color: var(--primary-color);
+  color: white;
+}
+      form paper-input {
+        width: 150px;
+      }
+      form paper-input, form gold-email-input, form gold-phone-input {
+        display: inline-block;
+      }
+
+    </style>
+    <h1>Admin</h1>
+    <h2>Tickets</h2>
+    <paper-datatable data="{{tickets}}" selectable>
+      <paper-datatable-column header="ID" property="ID" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="FirstName" property="FirstName" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="LastName" property="LastName" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="Email" property="Email" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="PhoneNumber" property="PhoneNumber" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+    </paper-datatable>
+    <form is="iron-form" id="newTicket" method="post" action="/api/tickets" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="response">
+      <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
+      <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
+      <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
+      <gold-phone-input name="PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+      <paper-button raised on-tap="newTicket">Create</paper-button>
+    </form>
+
+    <iron-ajax
+            auto
+            url="/api/tickets"
+            handle-as="json"
+            last-response="{{tickets}}"></iron-ajax>
+
+    <h2>Purchase Request</h2>
+    <paper-datatable data="{{requests}}" selectable>
+      <paper-datatable-column header="ID" property="ID" type="Number" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="FirstName" property="FirstName" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="LastName" property="LastName" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="Email" property="Email" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="PhoneNumber" property="PhoneNumber" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="RawType" property="RawType" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="GroupMember2" property="GroupMember2" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="GroupMember3" property="GroupMember3" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="GroupMember4" property="GroupMember4" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="AfterPartyCount" property="AfterPartyCount" type="Number" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="PromoCode" property="PromoCode" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="Charged" property="Charged" type="Number" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+    </paper-datatable>
+
+    <iron-ajax
+            auto
+            url="/api/purchaseRequests"
+            handle-as="json"
+            last-response="{{requests}}"></iron-ajax>
+
+    <h2>Promo Codes</h2>
+    <paper-datatable data="{{promoCodes}}" selectable>
+      <paper-datatable-column header="Discount Code" property="ID" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
+      <paper-datatable-column header="Percent Discount (%)" property="Percent" type="Number" editable edit-icon sortable dialog>
+        <template>
+          <paper-input value="{{value}}" no-label-float type="number"></paper-input>
+        </template>
+      </paper-datatable-column>
+      <paper-datatable-column header="Dollar Discount ($)" property="Amount" type="Number" editable edit-icon sortable dialog>
+        <template>
+          <paper-input value="{{value}}" no-label-float type="number"></paper-input>
+        </template>
+      </paper-datatable-column>
+    </paper-datatable>
+
+    <form is="iron-form" id="newPromoCode" method="post" action="/api/promoCodes" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="response">
+      <paper-input name="ID" label="Promo Code ID" required auto-validate></paper-input>
+      <paper-button raised on-tap="newPromoCode">Create</paper-button>
+    </form>
+
+    <iron-ajax
+            auto
+            url="/api/promoCodes"
+            handle-as="json"
+            last-response="{{promoCodes}}"></iron-ajax>
+    <iron-ajax id="patchPromoCodes"
+            url="/api/promoCodes"
+            handle-as="json"
+            content-type="application/json"
+            method="PATCH"></iron-ajax>
+  </template>
+ <script>
+  Polymer({
+    is: 'admin-page',
+    newPromoCode: function() {
+      this.$.newPromoCode.submit();
+    },
+    newTicket: function() {
+      this.$.newTicket.submit();
+    },
+    observers: [
+      'changedPromoCode(promoCodes.#0.*)',
+    ],
+    changedPromoCode: function(changes) {
+      if (changes.value === changes.base) {
+        return;
+      }
+      this.$.patchPromoCodes.body = changes.base;
+      this.$.patchPromoCodes.generateRequest();
+    },
+  });
+  </script>
+</dom-module>

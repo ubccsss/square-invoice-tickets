@@ -1,0 +1,100 @@
+<dom-module id="buy-tickets">
+  <template>
+    <style>
+h1 {
+  @apply(--h1-style);
+}
+p {
+  @apply(--paper-font-body2);
+}
+paper-button {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.error {
+  color: red;
+}
+    .indent {
+      border-left: 2px solid grey;
+      padding-left: 16px;
+      margin-top: 16px;
+    }
+    .indent paper-input:first-child {
+      margin-top: -8px;
+    }
+    .form-inner[disabled] {
+      pointer-events: none;
+      opacity: 0.8;
+    }
+    </style>
+    <h1>Happily Ever After - CSSS Year End Gala Tickets</h1>
+    <p>The annual dinner and dance event will take place on March 26th from 6 - 11 pm at Diamond Ballroom (1495 W8th Avenue). There will be drinks, a photo booth, and not to mention an AWESOME view! Fill out this form to receive tickets and we will send you an email with instructions regarding payment shortly. Fill out the names of your group members if you decide to purchase a group ticket - only one submission is required per group.</p>
+
+    <form is="iron-form" id="form" method="post" action="/api/buy"
+      content-type="application/json"
+      on-iron-form-error="errorHandler"
+      on-iron-form-presubmit="presubmit"
+      on-iron-form-response="response"
+      >
+      <div class="form-inner" disabled$="[[submitting]]">
+        <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
+        <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
+        <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
+        <gold-phone-input name="PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+
+        <paper-dropdown-menu label="Ticket Type" name="RawType" required value="{{type}}">
+          <paper-menu class="dropdown-content" selected="0">
+            <paper-item>Individual - $25</paper-item>
+            <paper-item>Group (4 tickets) - $80</paper-item>
+          </paper-menu>
+        </paper-dropdown-menu>
+        <template is="dom-if" if="[[group(type)]]">
+          <div class="indent">
+            <paper-input name="GroupMember2" label="Group Member 2 Name" required auto-validate></paper-input>
+            <paper-input name="GroupMember3" label="Group Member 3 Name" required auto-validate></paper-input>
+            <paper-input name="GroupMember4" label="Group Member 4 Name" required auto-validate></paper-input>
+          </div>
+        </template>
+        <paper-input type="number" name="RawAfterPartyCount" label="How many people will be attending the after party? (Party depends on interest.)" required></paper-input>
+        <paper-input name="PromoCode" label="Promo Code (CSSS Officers + Executives only)"></paper-input>
+      </div>
+      <div class="error">[[error]]</div>
+      <br>
+      <center>
+        <paper-button raised on-tap="submit">Buy</paper-button>
+      </center>
+    </form>
+  </template>
+ <script>
+  Polymer({
+    is: 'buy-tickets',
+    submit: function() {
+      this.$.form.submit();
+    },
+    errorHandler: function(e, err) {
+      var resp = err.request.xhr.response;
+      if (resp.Error) {
+        this.error = resp.Error;
+      } else {
+        this.error = e.detail.error.toString();
+      }
+      this.done();
+    },
+    done: function() {
+      this.submitting = false;
+    },
+    response: function(resp) {
+      this.done();
+      page('/bought');
+    },
+    presubmit: function() {
+      this.submitting = true;
+      this.error = '';
+    },
+    group: function(type) {
+      return type.includes('Group');
+    }
+  });
+  </script>
+</dom-module>

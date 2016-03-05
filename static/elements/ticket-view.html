@@ -1,0 +1,121 @@
+<dom-module id="ticket-view">
+  <template>
+    <style>
+h1 {
+  @apply(--h1-style);
+}
+p {
+  @apply(--paper-font-body2);
+}
+      img {
+        width: 200px;
+      }
+      .right {
+        float: right;
+      }
+      td {
+        padding: 0 8px;
+      }
+      :host {
+        overflow-x: auto;
+        display: block;
+        margin: 0 -16px;
+        --border-text: {
+          color: black;
+          background-color: white;
+        }
+      }
+      .ticket {
+        width: 851px;
+        height: 315px;
+        background: url(/img/ticket.jpg);
+      }
+      table {
+        width: 100%;
+        height: 100%;
+      }
+      table td:first-child {
+        width: 45%;
+      }
+      table center {
+        display: inline-block;
+        margin-left: 30px;
+      }
+      table center span {
+        @apply(--border-text);
+        @apply(--paper-font-body2);
+      }
+      table center img {
+        background-color: white;
+        padding: 8px;
+      }
+      .details {
+        @apply(--paper-font-display1);
+        @apply(--border-text);
+        font-weight: 200;
+        position: relative;
+        bottom: 75px;
+      }
+      .bottom {
+        vertical-align: bottom;
+      }
+
+    </style>
+
+    <div class="ticket">
+      <table>
+        <tr>
+          <td>
+            <center>
+              <img src="[[qrURL(ticket.ID)]]">
+              <br>
+              <span>[[ticket.ID]]</span>
+            </center>
+          </td>
+          <td class="bottom">
+            <span class="details">
+              <span>[[ticket.FirstName]]</span>
+              <span>[[ticket.LastName]]</span>
+              <br>
+              <template is="dom-if" if="[[ticket.PhoneNumber]]">
+              <span>[[ticket.PhoneNumber]]</span>,
+              <span>[[ticket.Email]]</span>
+              </template>
+            </span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <iron-ajax
+            auto
+            url="[[ticketURL(id)]]"
+            handle-as="json"
+            last-response="{{ticket}}"
+            on-error="error"></iron-ajax>
+
+  </template>
+ <script>
+  Polymer({
+    is: 'ticket-view',
+    properties: {
+      ticket: {
+        value: {},
+      },
+    },
+    ticketURL: function(id) {
+      return '/api/ticket/'+id;
+    },
+    qrURL: function(id) {
+      if (!id) {
+        return null;
+      }
+      var url = 'http://natalie.fn.lc:8383/ticket/'+id;
+      return 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='+encodeURIComponent(url);
+    },
+    error: function(e, err) {
+      this.ticket = { FirstName: err.request.xhr.response.Error };
+    },
+  });
+  </script>
+</dom-module>

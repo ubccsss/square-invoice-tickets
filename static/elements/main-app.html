@@ -1,0 +1,96 @@
+<dom-module id="main-app">
+  <template>
+    <style>
+:host {
+  @apply(--paper-font-body2);
+
+  --primary-color: #2fa4e7;
+  --h1-style: {
+    color: var(--primary-color);
+    @apply(--paper-font-display2);
+  }
+}
+a {
+  color: var(--primary-color);
+}
+h1 {
+  @apply(--h1-style);
+}
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+}
+  footer {
+    text-align: center;
+    padding: 100px 0 50px;
+  }
+  footer a {
+    margin: 8px;
+  }
+  lazy-pages > * {
+    position: inherit !important;
+    height: inherit !important;
+  }
+  lazy-pages {
+    overflow: visible !important;
+  }
+    </style>
+    <div class="content">
+      <lazy-pages attr-for-selected="data-route" selected="{{route}}">
+        <template is="dom-if" restamp data-route="home">
+          <buy-tickets></buy-tickets>
+        </template>
+        <template is="dom-if" restamp data-route="admin">
+          <admin-page></admin-page>
+        </template>
+        <section data-route="notfound">
+          <h1>Page not found</h1>
+        </section>
+        <section data-route="bought">
+          <h1>Tickets Purchased</h1>
+          <p>
+          You should receive an email from Square with an invoice to purchase the
+          tickets shortly. Once you pay, you will receive an email with the tickets.
+          </p>
+        </section>
+        <template is="dom-if" restamp data-route="ticket">
+          <ticket-view id="[[params.id]]"></ticket-view>
+        </template>
+      </lazy-pages>
+      <footer>
+        <a href="/">Home</a>
+        <a href="http://ubccsss.org/">UBC CSSS</a>
+        <a href="/admin">Admin</a>
+      </footer>
+    </div>
+  </template>
+ <script>
+  Polymer({
+    is: 'main-app',
+    attached: function() {
+      var app = this;
+      page('/', function () {
+        app.route = 'home';
+      });
+      page('/bought', function() {
+        app.route = 'bought';
+      });
+      page('/admin', function() {
+        app.route = 'admin';
+      });
+      page('/ticket/:id', function(params) {
+        app.params = params.params;
+        console.log(params);
+        app.route = 'ticket';
+      });
+      page('*', function () {
+        app.route = 'notfound';
+      });
+      page({
+        hashbang: false,
+      });
+    },
+  });
+  </script>
+</dom-module>
