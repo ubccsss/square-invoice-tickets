@@ -34,8 +34,10 @@ var (
 
 	squareEmail   = flag.String("squareEmail", "", "the square email address")
 	squarePass    = flag.String("squarePass", "", "the square password")
+	token         = flag.String("squareToken", "", "the square unit token")
 	mailgunKey    = flag.String("mg", "", "the mailgun api key")
 	mailgunPubKey = flag.String("mgPub", "", "the mailgun api pubkey")
+	currency      = flag.String("currency", "CAD", "the currency to use")
 )
 
 const (
@@ -366,6 +368,11 @@ func (s *server) buy(w http.ResponseWriter, r *http.Request) {
 		s.err(w, err, 500)
 		return
 	}
+
+	if err := SendInvoice(&req); err != nil {
+		s.err(w, err, 500)
+		return
+	}
 }
 
 type err struct {
@@ -422,6 +429,74 @@ func newTicket(first, last, phone, email string) models.Ticket {
 	}
 }
 
+func SendInvoice(pr *models.PurchaseRequest) error {
+	amt := &square.Money{
+		Amount:       int(pr.Charged * 100),
+		CurrencyCode: *currency,
+	}
+	none := &square.Money{
+		Amount:       0,
+		CurrencyCode: *currency,
+	}
+	req := &square.InvoiceCreateRequest{
+		AdditionalRecipientEmail: make([]struct{}, 0),
+		Cart: &square.Cart{
+			Amounts: &square.Amounts{
+				DiscountMoney: none,
+				TaxMoney:      none,
+				TipMoney:      none,
+				TotalMoney:    amt,
+			},
+			LineItems: &square.LineItems{
+				Itemization: []*square.Item{
+					{
+						Amounts: &square.Amounts{
+							DiscountMoney:                        none,
+							GrossSalesMoney:                      amt,
+							ItemVariationPriceMoney:              amt,
+							ItemVariationPriceTimesQuantityMoney: amt,
+							TaxMoney:   none,
+							TotalMoney: amt,
+						},
+						Configuration: &square.Configuration{
+							BackingType:             "CUSTOM_AMOUNT",
+							ItemVariationPriceMoney: amt,
+							SelectedOptions: &square.Options{
+								Discount: make([]*square.Discount, 0),
+								Fee:      make([]struct{}, 0),
+							},
+						},
+						CustomNote: "CSSS Year End Gala Ticket - " + pr.RawType,
+						Quantity:   "1",
+					},
+				},
+				Discount: make([]*square.Discount, 0),
+				Fee:      make([]struct{}, 0),
+			},
+		},
+		DueOn:                 square.DueDate{}.FromTime(time.Now().Add(24 * time.Hour)),
+		InvoiceName:           "Happily Ever After - CSSS Year End Gala Tickets",
+		IsDraft:               false,
+		MerchantInvoiceNumber: fmt.Sprintf("PurchaseRequest %d", pr.ID),
+		Payer: &square.Payer{
+			DisplayName: pr.FirstName + " " + pr.LastName,
+			Email:       pr.Email,
+		},
+		RequestedMoney: amt,
+		UnitToken:      *token,
+	}
+	sq, err := square.New(*squareEmail, *squarePass)
+	if err != nil {
+		return err
+	}
+	invoice, err := sq.CreateInvoice(req)
+	if err != nil {
+		return err
+	}
+	log.Printf("invoice %+v", invoice)
+	return nil
+}
+
 func (s *server) pollSquare() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -431,11 +506,12 @@ func (s *server) pollSquare() {
 			log.Println("square err", err)
 			continue
 		}
-		invoices, err := sq.Invoices()
+		invoices, err := sq.Invoices(*token)
 		if err != nil {
 			log.Println("square err", err)
 			continue
 		}
+		log.Printf("invoices %+v", invoices)
 		for _, invoice := range invoices {
 			if !strings.HasPrefix(invoice.MerchantInvoiceNumber, "PurchaseRequest ") {
 				continue

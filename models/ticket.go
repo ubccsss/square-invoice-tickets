@@ -72,7 +72,7 @@ type Ticket struct {
 }
 
 func (t Ticket) URL() string {
-	return "http://ticket.fn.lc/ticket/" + t.ID
+	return "http://tickets.fn.lc/ticket/" + t.ID
 }
 func (t Ticket) HTML() string {
 	return fmt.Sprintf(`<a href="%s">%s</a><br>`, t.URL(), t.URL())
