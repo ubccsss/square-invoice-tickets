@@ -531,7 +531,7 @@ func (s *server) pollSquare() {
 				log.Println("db err", err)
 				continue
 			}
-			if err := query.Association("Tickets").Find(&pr.Tickets); err != nil {
+			if err := query.Association("Tickets").Find(&pr.Tickets).Error; err != nil {
 				log.Println("db tickets err", err)
 				continue
 			}
