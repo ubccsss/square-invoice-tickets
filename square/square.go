@@ -24,21 +24,28 @@ const (
 
 var setupOnce sync.Once
 
+type Error struct {
+	Success      *bool  `json:"success"`
+	ErrorTitle   string `json:"error_title"`
+	ErrorMessage string `json:"error_message"`
+}
+
 func (c *Client) makeRequest(url string, body interface{}, get bool) ([]byte, int, error) {
 	log.Printf("Hitting %s", url)
 
 	var postBody bytes.Buffer
-	if body != nil {
+	if !get {
 		if err := json.NewEncoder(&postBody).Encode(body); err != nil {
 			return nil, 0, err
 		}
+		log.Println("req", postBody.String())
 	}
 	method := "POST"
 	if get {
 		method = "GET"
 	}
 	req, err := http.NewRequest(method, url, &postBody)
-	if body != nil {
+	if !get {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	csrf := ""
@@ -63,6 +70,13 @@ func (c *Client) makeRequest(url string, body interface{}, get bool) ([]byte, in
 	}
 	defer resp.Body.Close()
 	buf, _ := ioutil.ReadAll(resp.Body)
+	var errResp Error
+	if err := json.Unmarshal(buf, &errResp); err != nil {
+		return nil, 0, err
+	}
+	if errResp.Success != nil && *errResp.Success == false {
+		return nil, 0, fmt.Errorf("error %s", buf)
+	}
 	return buf, resp.StatusCode, nil
 }
 
@@ -334,7 +348,7 @@ type InvoiceCreateResponse struct {
 }
 
 func (c *Client) CreateInvoice(req *InvoiceCreateRequest) (*Invoice, error) {
-	req.UnitToken = c.merchantToken
+	req.UnitToken = c.unitToken
 
 	body, code, err := c.makeRequest(invoiceServiceCreateURL, req, false)
 	if err != nil {
@@ -343,6 +357,7 @@ func (c *Client) CreateInvoice(req *InvoiceCreateRequest) (*Invoice, error) {
 	if code != 200 {
 		return nil, fmt.Errorf("error creating square invoice %d, %s", code, body)
 	}
+	log.Printf("resp %s", body)
 	var resp InvoiceCreateResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
