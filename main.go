@@ -34,7 +34,6 @@ var (
 
 	squareEmail   = flag.String("squareEmail", "", "the square email address")
 	squarePass    = flag.String("squarePass", "", "the square password")
-	token         = flag.String("squareToken", "", "the square unit token")
 	mailgunKey    = flag.String("mg", "", "the mailgun api key")
 	mailgunPubKey = flag.String("mgPub", "", "the mailgun api pubkey")
 	currency      = flag.String("currency", "CAD", "the currency to use")
@@ -483,7 +482,6 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 			Email:       pr.Email,
 		},
 		RequestedMoney: amt,
-		UnitToken:      *token,
 	}
 	sq, err := square.New(*squareEmail, *squarePass)
 	if err != nil {
@@ -506,7 +504,7 @@ func (s *server) pollSquare() {
 			log.Println("square err", err)
 			continue
 		}
-		invoices, err := sq.Invoices(*token)
+		invoices, err := sq.Invoices()
 		if err != nil {
 			log.Println("square err", err)
 			continue

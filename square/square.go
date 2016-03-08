@@ -24,24 +24,33 @@ const (
 
 var setupOnce sync.Once
 
-func (c *Client) makeRequest(url string, body interface{}) ([]byte, int, error) {
+func (c *Client) makeRequest(url string, body interface{}, get bool) ([]byte, int, error) {
 	log.Printf("Hitting %s", url)
 
-	jsonStr, err := json.Marshal(body)
-	if err != nil {
-		return nil, 0, err
+	var postBody bytes.Buffer
+	if body != nil {
+		if err := json.NewEncoder(&postBody).Encode(body); err != nil {
+			return nil, 0, err
+		}
 	}
-	log.Printf("jsonStr %s", jsonStr)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-	cookies := c.http.Jar.Cookies(req.URL)
+	method := "POST"
+	if get {
+		method = "GET"
+	}
+	req, err := http.NewRequest(method, url, &postBody)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	csrf := ""
-	for _, cookie := range cookies {
+	for _, cookie := range c.http.Jar.Cookies(req.URL) {
 		if cookie.Name == "_js_csrf" {
 			csrf = cookie.Value
 		}
 	}
-	req.Header.Set("X-Csrf-Token", csrf)
+	req.Header.Set("X-CSRF-Token", csrf)
+	if len(c.merchantToken) > 0 {
+		req.Header.Set("X-Merchant-Token", c.merchantToken)
+	}
 	req.Header.Set("Host", "api.squareup.com")
 	req.Header.Set("Origin", originURL)
 	req.Header.Set("Referer", loginURL)
@@ -58,7 +67,8 @@ func (c *Client) makeRequest(url string, body interface{}) ([]byte, int, error) 
 }
 
 type Client struct {
-	http *http.Client
+	http                     *http.Client
+	merchantToken, unitToken string
 }
 
 func New(user, pass string) (*Client, error) {
@@ -74,6 +84,21 @@ func New(user, pass string) (*Client, error) {
 	if err := c.login(user, pass); err != nil {
 		return nil, err
 	}
+
+	nav, err := c.GetNavigation()
+	if err != nil {
+		return nil, err
+	}
+	c.merchantToken = nav.Token
+
+	subunits, err := c.GetSubUnits()
+	if err != nil {
+		return nil, err
+	}
+	if len(subunits.Entities) > 0 {
+		entity := subunits.Entities[0]
+		c.unitToken = entity.Token
+	}
 	return c, err
 }
 
@@ -83,7 +108,7 @@ type NavigationResponse struct {
 }
 
 func (c *Client) GetNavigation() (*NavigationResponse, error) {
-	body, code, err := c.makeRequest(navigationURL, nil)
+	body, code, err := c.makeRequest(navigationURL, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +124,7 @@ func (c *Client) GetNavigation() (*NavigationResponse, error) {
 
 type Entity struct {
 	Email      string `json:"email"`
-	Nickname   string `json:"token"`
+	Nickname   string `json:"nickname"`
 	Token      string `json:"token"`
 	UnitActive bool   `json:"unit_active"`
 }
@@ -108,12 +133,12 @@ type SubUnitResponse struct {
 }
 
 func (c *Client) GetSubUnits() (*SubUnitResponse, error) {
-	body, code, err := c.makeRequest(subunitsURL, nil)
+	body, code, err := c.makeRequest(subunitsURL, nil, true)
 	if err != nil {
 		return nil, err
 	}
 	if code != 200 {
-		return nil, fmt.Errorf("error getting navigation %d, %s", code, body)
+		return nil, fmt.Errorf("error getting subunits %d, %s", code, body)
 	}
 	var resp SubUnitResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
@@ -142,7 +167,7 @@ func (c *Client) login(email, pass string) error {
 	}
 
 	req := LoginRequest{email, pass}
-	body, code, err := c.makeRequest(loginPostURL, &req)
+	body, code, err := c.makeRequest(loginPostURL, &req, false)
 	if err != nil {
 		return err
 	}
@@ -218,17 +243,16 @@ type InvoiceListResponse struct {
 	Invoice    []*Invoice `json:"invoice"`
 }
 
-func (c *Client) Invoices(token string) ([]*Invoice, error) {
+func (c *Client) Invoices() ([]*Invoice, error) {
 	url := invoiceServiceURL
-	req := InvoiceListRequest{10000000, token}
-	body, code, err := c.makeRequest(url, &req)
+	req := InvoiceListRequest{10000000, c.unitToken}
+	body, code, err := c.makeRequest(url, &req, false)
 	if err != nil {
 		return nil, err
 	}
 	if code != 200 {
 		return nil, fmt.Errorf("error fetching square invoices %d, %s", code, body)
 	}
-	log.Printf("resp %s", body)
 	var resp InvoiceListResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
@@ -310,8 +334,9 @@ type InvoiceCreateResponse struct {
 }
 
 func (c *Client) CreateInvoice(req *InvoiceCreateRequest) (*Invoice, error) {
-	url := invoiceServiceCreateURL
-	body, code, err := c.makeRequest(url, req)
+	req.UnitToken = c.merchantToken
+
+	body, code, err := c.makeRequest(invoiceServiceCreateURL, req, false)
 	if err != nil {
 		return nil, err
 	}
