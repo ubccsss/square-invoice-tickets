@@ -194,10 +194,11 @@ func (s *server) ticket(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) square(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := square.Login(*squareEmail, *squarePass); err != nil {
+	sq, err := square.New(*squareEmail, *squarePass)
+	if err != nil {
 		s.err(w, err, 500)
 	}
-	nav, err := square.GetNavigation()
+	nav, err := sq.GetNavigation()
 	if err != nil {
 		s.err(w, err, 500)
 	}
@@ -425,11 +426,12 @@ func (s *server) pollSquare() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for _ = range ticker.C {
-		if err := square.Login(*squareEmail, *squarePass); err != nil {
+		sq, err := square.New(*squareEmail, *squarePass)
+		if err != nil {
 			log.Println("square err", err)
 			continue
 		}
-		invoices, err := square.Invoices()
+		invoices, err := sq.Invoices()
 		if err != nil {
 			log.Println("square err", err)
 			continue

@@ -11,12 +11,21 @@ import (
 	"sync"
 )
 
+const (
+	originURL         = "https://squareup.com"
+	loginURL          = "https://squareup.com/login"
+	loginPostURL      = "https://api.squareup.com/mp/login"
+	navigationURL     = "https://squareup.com/dashboard/navigation"
+	subunitsURL       = "https://squareup.com/api/v1/multiunit/subunits"
+	invoiceServiceURL = "https://squareup.com/services/squareup.invoice.service.InvoiceService/List"
+)
+
 var setupOnce sync.Once
 
-func makeRequest(url string, body interface{}) ([]byte, int, error) {
+func (c *Client) makeRequest(url string, body interface{}) ([]byte, int, error) {
 	log.Printf("Hitting %s", url)
 
-	loginResp, err := http.Get("https://squareup.com/login")
+	loginResp, err := http.Get(loginURL)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -37,8 +46,8 @@ func makeRequest(url string, body interface{}) ([]byte, int, error) {
 	}
 	req.Header.Set("X-Csrf-Token", csrf)
 	req.Header.Set("Host", "api.squareup.com")
-	req.Header.Set("Origin", "https://squareup.com")
-	req.Header.Set("Referer", "https://squareup.com/login")
+	req.Header.Set("Origin", originURL)
+	req.Header.Set("Referer", loginURL)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36")
 	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
 
@@ -51,14 +60,24 @@ func makeRequest(url string, body interface{}) ([]byte, int, error) {
 	return buf, resp.StatusCode, nil
 }
 
-func Setup() {
-	setupOnce.Do(func() {
-		jar, err := cookiejar.New(nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		http.DefaultClient.Jar = jar
-	})
+type Client struct {
+	http *http.Client
+}
+
+func New(user, pass string) (*Client, error) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, err
+	}
+	c := &Client{
+		http: &http.Client{
+			Jar: jar,
+		},
+	}
+	if err := c.login(user, pass); err != nil {
+		return nil, err
+	}
+	return c, err
 }
 
 type NavigationResponse struct {
@@ -66,8 +85,8 @@ type NavigationResponse struct {
 	Token    string `json:"token"`
 }
 
-func GetNavigation() (*NavigationResponse, error) {
-	body, code, err := makeRequest("https://squareup.com/dashboard/navigation", nil)
+func (c *Client) GetNavigation() (*NavigationResponse, error) {
+	body, code, err := c.makeRequest(navigationURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -81,16 +100,39 @@ func GetNavigation() (*NavigationResponse, error) {
 	return &resp, nil
 }
 
+type Entity struct {
+	Email      string `json:"email"`
+	Nickname   string `json:"token"`
+	Token      string `json:"token"`
+	UnitActive bool   `json:"unit_active"`
+}
+type SubUnitResponse struct {
+	Entities []*Entity
+}
+
+func (c *Client) GetSubUnits() (*SubUnitResponse, error) {
+	body, code, err := c.makeRequest(subunitsURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	if code != 200 {
+		return nil, fmt.Errorf("error getting navigation %d, %s", code, body)
+	}
+	var resp SubUnitResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-func Login(email, pass string) error {
-	Setup()
-
+func (c *Client) login(email, pass string) error {
 	req := LoginRequest{email, pass}
-	body, code, err := makeRequest("https://api.squareup.com/mp/login", &req)
+	body, code, err := c.makeRequest(loginPostURL, &req)
 	if err != nil {
 		return err
 	}
@@ -159,10 +201,10 @@ type InvoiceListResponse struct {
 	Invoice    []*Invoice `json:"invoice"`
 }
 
-func Invoices() ([]*Invoice, error) {
-	url := "https://squareup.com/services/squareup.invoice.service.InvoiceService/List"
+func (c *Client) Invoices() ([]*Invoice, error) {
+	url := invoiceServiceURL
 	req := InvoiceListRequest{10000000}
-	body, code, err := makeRequest(url, &req)
+	body, code, err := c.makeRequest(url, &req)
 	if err != nil {
 		return nil, err
 	}
