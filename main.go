@@ -532,7 +532,7 @@ func (s *server) pollSquare() {
 				continue
 			}
 			if err := query.Association("Tickets").Find(&pr.Tickets); err != nil {
-				log.Println("db err", err)
+				log.Println("db tickets err", err)
 				continue
 			}
 			if len(pr.Tickets) == 0 && invoice.State == "PAID" {
