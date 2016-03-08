@@ -526,7 +526,12 @@ func (s *server) pollSquare() {
 				}
 			}
 			var pr models.PurchaseRequest
-			if err := s.db.Find(&pr, id).Association("Tickets").Find(&pr.Tickets).Error; err != nil {
+			query := s.db.Find(&pr, id)
+			if err := query.Error; err != nil {
+				log.Println("db err", err)
+				continue
+			}
+			if err := query.Association("Tickets").Find(&pr.Tickets); err != nil {
 				log.Println("db err", err)
 				continue
 			}
