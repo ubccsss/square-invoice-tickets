@@ -37,11 +37,9 @@ var (
 	mailgunKey    = flag.String("mg", "", "the mailgun api key")
 	mailgunPubKey = flag.String("mgPub", "", "the mailgun api pubkey")
 	currency      = flag.String("currency", "CAD", "the currency to use")
-)
 
-const (
-	priceIndividual = 25
-	priceGroup      = 80
+	priceGroup      = flag.Float64("priceGroup", 80, "the price for group tickets")
+	priceIndividual = flag.Float64("priceIndividual", 25, "the price for individual tickets")
 )
 
 func main() {
@@ -279,13 +277,14 @@ func (s *server) getPromoCode(code string) (*models.PromoCode, error) {
 	return promoCode, nil
 }
 
-func (s *server) priceEstimate(req *models.PurchaseRequest) (float32, error) {
-	// Price code
-	basePrice := float32(priceIndividual)
-	switch req.Type {
-	case models.Group:
-		basePrice = priceGroup
+func (s *server) priceEstimate(req *models.PurchaseRequest) (float64, error) {
+	// No promo codes for groups
+	if req.Type == models.Group {
+		return *priceGroup, nil
 	}
+
+	// Price code
+	basePrice := *priceIndividual
 
 	promoCode, err := s.getPromoCode(req.PromoCode)
 	if err != nil {
@@ -314,10 +313,14 @@ func (s *server) details(w http.ResponseWriter, r *http.Request) {
 		s.err(w, err, 400)
 		return
 	}
-	promoCode, err := s.getPromoCode(req.PromoCode)
-	if err != nil {
-		s.err(w, err, 400)
-		return
+	var promoCode *models.PromoCode
+	if req.Type == models.Individual {
+		pc, err := s.getPromoCode(req.PromoCode)
+		if err != nil {
+			s.err(w, err, 400)
+			return
+		}
+		promoCode = pc
 	}
 	price, err := s.priceEstimate(req)
 	if err != nil {

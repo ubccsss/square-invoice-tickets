@@ -32,7 +32,7 @@ type PurchaseRequest struct {
 	RawAfterPartyCount string
 	AfterPartyCount    int
 	PromoCode          string
-	Charged            float32
+	Charged            float64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -43,8 +43,8 @@ type PurchaseRequest struct {
 
 type PromoCode struct {
 	ID      string
-	Percent float32
-	Amount  float32
+	Percent float64
+	Amount  float64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -72,7 +72,7 @@ type Ticket struct {
 }
 
 func (t Ticket) URL() string {
-	return "http://tickets.fn.lc/ticket/" + t.ID
+	return "http://tickets.ubccsss.org/ticket/" + t.ID
 }
 func (t Ticket) HTML() string {
 	return fmt.Sprintf(`<a href="%s">%s</a><br>`, t.URL(), t.URL())
