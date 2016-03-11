@@ -111,6 +111,7 @@ paper-button {
             url="[[cartDetailsURL(Type, PromoCode)]]"
             handle-as="json"
             last-response="{{details}}"
+            on-error="errorHandler"
             debounce-duration="300"></iron-ajax>
   </template>
  <script>

@@ -40,6 +40,7 @@ var (
 
 	priceGroup      = flag.Float64("priceGroup", 80, "the price for group tickets")
 	priceIndividual = flag.Float64("priceIndividual", 25, "the price for individual tickets")
+	maxTickets      = flag.Int("maxTickets", 18, "the number of tickets that can be sold")
 )
 
 func main() {
@@ -272,6 +273,9 @@ func (s *server) getPromoCode(code string) (*models.PromoCode, error) {
 		if err := s.db.Where("id = ?", code).First(&pc).Error; err != nil {
 			return nil, err
 		}
+		if pc.Count == 0 {
+			return nil, nil
+		}
 		promoCode = &pc
 	}
 	return promoCode, nil
@@ -371,6 +375,21 @@ func (s *server) buy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.PromoCode != "" {
+		promoCode, err := s.getPromoCode(req.PromoCode)
+		if err != nil {
+			s.err(w, err, 500)
+			return
+		}
+		if promoCode.Count > 0 {
+			promoCode.Count -= 1
+			if err := s.db.Save(promoCode).Error; err != nil {
+				s.err(w, err, 500)
+				return
+			}
+		}
+	}
+
 	if err := SendInvoice(&req); err != nil {
 		s.err(w, err, 500)
 		return
@@ -393,19 +412,24 @@ func (s *server) err(w http.ResponseWriter, sendErr error, status int) {
 }
 
 func (s *server) ValidatePurchaseRequest(pr *models.PurchaseRequest) error {
-	var promoCodes []*models.PromoCode
-	if err := s.db.Find(&promoCodes).Error; err != nil {
+	needed := 1
+	if pr.Type == models.Group {
+		needed = 4
+	}
+	count := 0
+	if err := s.db.Model(&models.Ticket{}).Count(&count).Error; err != nil {
 		return err
 	}
-	var valid = false
-	for _, code := range promoCodes {
-		if pr.PromoCode == code.ID {
-			valid = true
-		}
+	if count+needed > *maxTickets {
+		return fmt.Errorf("Sorry, there are %d tickets available. This event may be sold out, or you need to check back later.", *maxTickets-count)
 	}
 
-	if pr.PromoCode != "" && !valid {
-		return fmt.Errorf("Invalid promocode: %s", pr.PromoCode)
+	promoCode, err := s.getPromoCode(pr.PromoCode)
+	if err != nil {
+		return err
+	}
+	if pr.PromoCode != "" && promoCode == nil {
+		return fmt.Errorf("Invalid promo code: %s", pr.PromoCode)
 	}
 	if _, err := govalidator.ValidateStruct(pr); err != nil {
 		return err

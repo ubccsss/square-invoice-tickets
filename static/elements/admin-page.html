@@ -20,7 +20,7 @@ paper-button {
 
     </style>
     <h1>Admin</h1>
-    <h2>Tickets</h2>
+    <h2>Tickets (<span>[[tickets.length]]</span> sold)</h2>
     <paper-datatable data="{{tickets}}" selectable>
       <paper-datatable-column header="ID" property="ID" type="String" sortable>
         <span>{{value}}</span>
@@ -38,7 +38,7 @@ paper-button {
         <span>{{value}}</span>
       </paper-datatable-column>
     </paper-datatable>
-    <form is="iron-form" id="newTicket" method="post" action="/api/tickets" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="response">
+    <form is="iron-form" id="newTicket" method="post" action="/api/tickets" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="reload">
       <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
       <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
       <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
@@ -144,9 +144,14 @@ paper-button {
           <paper-input value="{{value}}" no-label-float type="number"></paper-input>
         </template>
       </paper-datatable-column>
+      <paper-datatable-column header="Remaining Count (-1 for unlimited)" property="Count" type="Number" editable edit-icon sortable dialog>
+        <template>
+          <paper-input value="{{value}}" no-label-float type="number"></paper-input>
+        </template>
+      </paper-datatable-column>
     </paper-datatable>
 
-    <form is="iron-form" id="newPromoCode" method="post" action="/api/promoCodes" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="response">
+    <form is="iron-form" id="newPromoCode" method="post" action="/api/promoCodes" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="reload">
       <paper-input name="ID" label="Promo Code ID" required auto-validate></paper-input>
       <paper-button raised on-tap="newPromoCode">Create</paper-button>
     </form>
@@ -172,15 +177,24 @@ paper-button {
       this.$.newTicket.submit();
     },
     observers: [
-      'changedPromoCode(promoCodes.#0.*)',
+      'changedPromoCode(promoCodes.*)',
     ],
     changedPromoCode: function(changes) {
       if (changes.value === changes.base) {
         return;
       }
-      this.$.patchPromoCodes.body = changes.base;
+      var matches = changes.path.match(/promoCodes\.#(\d+)\.*/);
+      if (!matches) {
+        console.log("no matches", matches, changes);
+        return;
+      }
+      var body = this.promoCodes[parseInt(matches[1], 10)];
+      this.$.patchPromoCodes.body = body;
       this.$.patchPromoCodes.generateRequest();
     },
+    reload: function() {
+      window.location.reload();
+    }
   });
   </script>
 </dom-module>

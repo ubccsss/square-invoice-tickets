@@ -45,6 +45,7 @@ type PromoCode struct {
 	ID      string
 	Percent float64
 	Amount  float64
+	Count   int
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
