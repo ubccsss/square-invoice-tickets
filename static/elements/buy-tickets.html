@@ -117,6 +117,17 @@ paper-button {
  <script>
   Polymer({
     is: 'buy-tickets',
+    properties: {
+      Type: {
+        type: String,
+        observer: 'typeChange',
+      }
+    },
+    typeChange: function(val, old) {
+      if (old && old.indexOf("Group") >= 0) {
+        window.location.reload();
+      }
+    },
     submit: function() {
       this.$.form.submit();
     },
@@ -144,6 +155,7 @@ paper-button {
       return type.includes('Group');
     },
     cartDetailsURL: function(Type, PromoCode) {
+      this.error = '';
       return '/api/details?type='+encodeURIComponent(Type)+'&code='+encodeURIComponent(PromoCode);
     }
   });

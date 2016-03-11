@@ -76,5 +76,5 @@ func (t Ticket) URL() string {
 	return "http://tickets.ubccsss.org/ticket/" + t.ID
 }
 func (t Ticket) HTML() string {
-	return fmt.Sprintf(`<a href="%s">%s</a><br>`, t.URL(), t.URL())
+	return fmt.Sprintf(`%s %s <a href="%s">%s</a><br>`, t.FirstName, t.LastName, t.URL(), t.URL())
 }

@@ -22,8 +22,10 @@ paper-button {
     <h1>Admin</h1>
     <h2>Tickets (<span>[[tickets.length]]</span> sold)</h2>
     <paper-datatable data="{{tickets}}" selectable>
-      <paper-datatable-column header="ID" property="ID" type="String" sortable>
-        <span>{{value}}</span>
+      <paper-datatable-column header="ID" property="ID" type="String" sortable editable>
+        <template>
+          <span><a target="_blank" href="[[ticketURL(value)]]">{{value}}</a></span>
+        </template>
       </paper-datatable-column>
       <paper-datatable-column header="FirstName" property="FirstName" type="String" sortable>
         <span>{{value}}</span>
@@ -191,6 +193,9 @@ paper-button {
       var body = this.promoCodes[parseInt(matches[1], 10)];
       this.$.patchPromoCodes.body = body;
       this.$.patchPromoCodes.generateRequest();
+    },
+    ticketURL: function(id) {
+      return '/ticket/'+id;
     },
     reload: function() {
       window.location.reload();
