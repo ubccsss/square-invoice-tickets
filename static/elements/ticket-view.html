@@ -29,6 +29,17 @@ p {
         width: 851px;
         height: 315px;
         background: url(/img/ticket.jpg);
+        -webkit-print-color-adjust: exact;
+      }
+      @media print {
+        :host {
+          overflow-x: visible;
+          width: 100%;
+        }
+        .ticket {
+          transform-origin: top left;
+          transform: scale(0.8);
+        }
       }
       table {
         width: 100%;
