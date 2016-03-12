@@ -7,17 +7,22 @@ h1 {
 p {
   @apply(--paper-font-body2);
 }
+pre {
+  color: rgb(131, 148, 150);
+  background-color: rgb(0, 43, 54);
+  padding: 20px;
+  font-family: monospace;
+}
+form paper-input {
+  width: 150px;
+}
+form paper-input, form gold-email-input, form gold-phone-input {
+  display: inline-block;
+}
 paper-button {
   background-color: var(--primary-color);
   color: white;
 }
-      form paper-input {
-        width: 150px;
-      }
-      form paper-input, form gold-email-input, form gold-phone-input {
-        display: inline-block;
-      }
-
     </style>
     <h1>Admin</h1>
     <h2>Tickets (<span>[[tickets.length]]</span> sold)</h2>
@@ -168,6 +173,14 @@ paper-button {
             handle-as="json"
             content-type="application/json"
             method="PATCH"></iron-ajax>
+
+    <h2>Stats <a href="/api/stats">/api/stats</a></h2>
+    <pre>[[stringify(stats)]]</pre>
+    <iron-ajax
+            auto
+            url="/api/stats"
+            handle-as="json"
+            last-response="{{stats}}"></iron-ajax>
   </template>
  <script>
   Polymer({
@@ -199,6 +212,9 @@ paper-button {
     },
     reload: function() {
       window.location.reload();
+    },
+    stringify: function(obj) {
+      return JSON.stringify(obj, null, 2);
     }
   });
   </script>

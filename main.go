@@ -89,6 +89,7 @@ func newServer() (*server, error) {
 	api.HandleFunc("/promoCodes", auth.Wrap(s.promoCodes))
 	api.HandleFunc("/tickets", auth.Wrap(s.tickets))
 	api.HandleFunc("/square", auth.Wrap(s.square))
+	api.HandleFunc("/stats", auth.Wrap(s.stats))
 	api.HandleFunc("/ticket/{id}", s.ticket)
 	api.HandleFunc("/details", s.details)
 
@@ -197,12 +198,46 @@ func (s *server) square(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	sq, err := square.New(*squareEmail, *squarePass)
 	if err != nil {
 		s.err(w, err, 500)
+		return
 	}
 	nav, err := sq.GetNavigation()
 	if err != nil {
 		s.err(w, err, 500)
+		return
 	}
 	log.Println(nav)
+}
+
+type Stats struct {
+	Tickets, PurchaseRequests, PeopleCount, AfterPartyCount int
+}
+
+func (s *server) stats(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	w.Header().Set("Content-Type", "application/json")
+
+	stats := &Stats{}
+
+	if err := s.db.Model(&models.Ticket{}).Count(&stats.Tickets).Error; err != nil {
+		s.err(w, err, 500)
+		return
+	}
+
+	var reqs []*models.PurchaseRequest
+	if err := s.db.Model(&models.PurchaseRequest{}).Find(&reqs).Error; err != nil {
+		s.err(w, err, 500)
+		return
+	}
+	stats.PurchaseRequests = len(reqs)
+	for _, req := range reqs {
+		stats.AfterPartyCount += req.AfterPartyCount
+		switch req.Type {
+		case models.Individual:
+			stats.PeopleCount += 1
+		case models.Group:
+			stats.PeopleCount += 4
+		}
+	}
+	json.NewEncoder(w).Encode(stats)
 }
 
 func (s *server) tickets(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
@@ -523,7 +558,7 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 }
 
 func (s *server) pollSquare() {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
 	for _ = range ticker.C {
 		sq, err := square.New(*squareEmail, *squarePass)
