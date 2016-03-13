@@ -21,6 +21,9 @@ h1 {
   margin: 0 auto;
   padding: 16px;
 }
+  .content[fullwidth] {
+    max-width: 100%;
+  }
   footer {
     text-align: center;
     padding: 100px 0 50px;
@@ -41,7 +44,7 @@ h1 {
     overflow: visible !important;
   }
     </style>
-    <div class="content">
+    <div class="content" fullwidth$="{{fullwidth}}">
       <lazy-pages attr-for-selected="data-route" selected="{{route}}">
         <template is="dom-if" restamp data-route="home">
           <buy-tickets></buy-tickets>
@@ -76,6 +79,10 @@ h1 {
     is: 'main-app',
     attached: function() {
       var app = this;
+      page('*', function(ctx, next) {
+        app.fullwidth = false;
+        next();
+      });
       page('/', function () {
         app.route = 'home';
       });
@@ -84,6 +91,7 @@ h1 {
       });
       page('/admin', function() {
         app.route = 'admin';
+        app.fullwidth = true;
       });
       page('/ticket/:id', function(params) {
         app.params = params.params;
