@@ -41,6 +41,8 @@ var (
 	priceGroup      = flag.Float64("priceGroup", 80, "the price for group tickets")
 	priceIndividual = flag.Float64("priceIndividual", 25, "the price for individual tickets")
 	maxTickets      = flag.Int("maxTickets", 18, "the number of tickets that can be sold")
+
+	poll = flag.Bool("poll", true, "whether to poll square")
 )
 
 func main() {
@@ -140,7 +142,9 @@ func (nfh NotFoundHook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) listen() error {
-	go s.pollSquare()
+	if *poll {
+		go s.pollSquare()
+	}
 
 	log.Printf("Listening on %s", *addr)
 	return http.ListenAndServe(*addr, handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
@@ -162,6 +166,42 @@ func (s *server) purchaseRequests(w http.ResponseWriter, r *auth.AuthenticatedRe
 		s.err(w, err, 500)
 		return
 	}
+	m := make(map[int]*square.Invoice)
+	sq, err := square.New(*squareEmail, *squarePass)
+	if err != nil {
+		s.err(w, err, 500)
+		return
+	}
+	invoices, err := sq.Invoices()
+	if err != nil {
+		s.err(w, err, 500)
+		return
+	}
+	for _, invoice := range invoices {
+		if !strings.HasPrefix(invoice.MerchantInvoiceNumber, "PurchaseRequest ") {
+			continue
+		}
+		bits := strings.Split(invoice.MerchantInvoiceNumber, " ")
+		if len(bits) != 2 {
+			continue
+		}
+		id, err := strconv.Atoi(bits[1])
+		if err != nil {
+			log.Println("invoice parse err", err)
+			continue
+		}
+		m[id] = invoice
+	}
+	for _, pr := range records {
+		invoice, ok := m[pr.ID]
+		if !ok {
+			pr.Status = "NO_INVOICE"
+			continue
+		}
+		pr.Status = invoice.State + " - " + invoice.DeliveryStatus
+		pr.Invoice = invoice
+	}
+
 	if err := json.NewEncoder(w).Encode(records); err != nil {
 		s.err(w, err, 500)
 		return
@@ -200,12 +240,15 @@ func (s *server) square(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 		s.err(w, err, 500)
 		return
 	}
-	nav, err := sq.GetNavigation()
+	invoices, err := sq.Invoices()
 	if err != nil {
 		s.err(w, err, 500)
 		return
 	}
-	log.Println(nav)
+	if err := json.NewEncoder(w).Encode(invoices); err != nil {
+		s.err(w, err, 500)
+		return
+	}
 }
 
 type Stats struct {
@@ -582,10 +625,8 @@ func (s *server) pollSquare() {
 			}
 			id, err := strconv.Atoi(bits[1])
 			if err != nil {
-				if err != nil {
-					log.Println("invoice parse err", err)
-					continue
-				}
+				log.Println("invoice parse err", err)
+				continue
 			}
 			var pr models.PurchaseRequest
 			query := s.db.Find(&pr, id)

@@ -85,7 +85,7 @@ paper-button {
           </div>
         </template>
         <paper-input type="number" name="RawAfterPartyCount" label="How many people will be attending the after party? (Party depends on interest.)" required></paper-input>
-        <paper-input name="PromoCode" label="Promo Code (CSSS Officers + Executives only)" value="{{PromoCode}}"></paper-input>
+        <paper-input name="PromoCode" label="Promo Code" value="{{PromoCode}}"></paper-input>
         <template is="dom-if" if="[[details.PromoCode]]">
           <p>
             Promo Code <span>[[details.PromoCode.ID]]</span>:

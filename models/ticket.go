@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"time"
+
+	"github.com/d4l3k/square-invoice-tickets/square"
 )
 
 type PurchaseRequest struct {
@@ -13,6 +15,9 @@ type PurchaseRequest struct {
 	PhoneNumber string `valid:"required"`
 	RawType     string `valid:"required"`
 	Type        PurchaseType
+
+	Status  string
+	Invoice *square.Invoice
 
 	GroupMember2FirstName   string
 	GroupMember2LastName    string

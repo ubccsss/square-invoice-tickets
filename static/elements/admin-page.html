@@ -64,6 +64,9 @@ paper-button {
       <paper-datatable-column header="ID" property="ID" type="Number" sortable>
         <span>{{value}}</span>
       </paper-datatable-column>
+      <paper-datatable-column header="State" property="Status" type="String" sortable>
+        <span>{{value}}</span>
+      </paper-datatable-column>
       <paper-datatable-column header="FirstName" property="FirstName" type="String" sortable>
         <span>{{value}}</span>
       </paper-datatable-column>
@@ -176,6 +179,7 @@ paper-button {
 
     <h2>Stats <a href="/api/stats">/api/stats</a></h2>
     <pre>[[stringify(stats)]]</pre>
+    <h2>Raw Invoices <a href="/api/square">/api/square</a></h2>
     <iron-ajax
             auto
             url="/api/stats"
