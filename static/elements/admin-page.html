@@ -54,7 +54,7 @@ paper-button {
         </template>
       </paper-datatable-column>
     </paper-datatable>
-    <form is="iron-form" id="newTicket" method="post" action="/api/tickets" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="reload">
+    <form is="iron-form" id="newTicket" method="post" action="/api/tickets" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="refreshTickets">
       <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
       <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
       <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
