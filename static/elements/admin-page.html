@@ -26,23 +26,32 @@ paper-button {
     </style>
     <h1>Admin</h1>
     <h2>Tickets (<span>[[tickets.length]]</span> sold)</h2>
-    <paper-datatable data="{{tickets}}" selectable>
+    <paper-button raised on-tap="deleteTickets"><iron-icon icon="delete"></iron-icon> Delete Selected (<span>[[selectedTickets.length]]</span>)</paper-button>
+    <paper-datatable multi-selection data="{{tickets}}" selectable selected-items="{{selectedTickets}}">
       <paper-datatable-column header="ID" property="ID" type="String" sortable editable>
         <template>
           <span><a target="_blank" href="[[ticketURL(value)]]">{{value}}</a></span>
         </template>
       </paper-datatable-column>
-      <paper-datatable-column header="FirstName" property="FirstName" type="String" sortable>
-        <span>{{value}}</span>
+      <paper-datatable-column header="FirstName" property="FirstName" type="String" sortable editable edit-icon dialog>
+        <template>
+          <paper-input value="{{value}}" no-label-float></paper-input>
+        </template>
       </paper-datatable-column>
-      <paper-datatable-column header="LastName" property="LastName" type="String" sortable>
-        <span>{{value}}</span>
+      <paper-datatable-column header="LastName" property="LastName" type="String" sortable editable edit-icon dialog>
+        <template>
+          <paper-input value="{{value}}" no-label-float></paper-input>
+        </template>
       </paper-datatable-column>
-      <paper-datatable-column header="Email" property="Email" type="String" sortable>
-        <span>{{value}}</span>
+      <paper-datatable-column header="Email" property="Email" type="String" sortable editable edit-icon dialog>
+        <template>
+          <gold-email-input value="{{value}}" no-label-float auto-validate></gold-email-input>
+        </template>
       </paper-datatable-column>
-      <paper-datatable-column header="PhoneNumber" property="PhoneNumber" type="String" sortable>
-        <span>{{value}}</span>
+      <paper-datatable-column header="PhoneNumber" property="PhoneNumber" type="String" sortable editable edit-icon dialog>
+        <template>
+          <gold-phone-input value="{{value}}" no-label-float auto-validate></gold-phone-input>
+        </template>
       </paper-datatable-column>
     </paper-datatable>
     <form is="iron-form" id="newTicket" method="post" action="/api/tickets" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="reload">
@@ -53,11 +62,22 @@ paper-button {
       <paper-button raised on-tap="newTicket">Create</paper-button>
     </form>
 
-    <iron-ajax
+    <iron-ajax id="getTickets"
             auto
             url="/api/tickets"
             handle-as="json"
             last-response="{{tickets}}"></iron-ajax>
+    <iron-ajax id="deleteTickets"
+            url="/api/tickets"
+            handle-as="json"
+            content-type="application/json"
+            method="DELETE"
+            on-response="refreshTickets"></iron-ajax>
+    <iron-ajax id="patchTickets"
+            url="/api/tickets"
+            handle-as="json"
+            content-type="application/json"
+            method="PATCH"></iron-ajax>
 
     <h2>Purchase Request</h2>
     <paper-datatable data="{{requests}}" selectable>
@@ -197,6 +217,7 @@ paper-button {
     },
     observers: [
       'changedPromoCode(promoCodes.*)',
+      'changedTickets(tickets.*)',
     ],
     changedPromoCode: function(changes) {
       if (changes.value === changes.base) {
@@ -219,6 +240,31 @@ paper-button {
     },
     stringify: function(obj) {
       return JSON.stringify(obj, null, 2);
+    },
+    deleteTickets: function(e) {
+      var tickets = this.selectedTickets;
+      if (tickets.length === 0 || !confirm("Are you sure you want to delete "+tickets.length+" tickets?")) {
+        return
+      }
+      this.selectedTickets = [];
+      this.$.deleteTickets.body = tickets;
+      this.$.deleteTickets.generateRequest();
+    },
+    changedTickets: function(changes) {
+      if (changes.value === changes.base) {
+        return;
+      }
+      var matches = changes.path.match(/tickets\.#(\d+)\.*/);
+      if (!matches) {
+        console.log("no matches", matches, changes);
+        return;
+      }
+      var body = this.tickets[parseInt(matches[1], 10)];
+      this.$.patchTickets.body = body;
+      this.$.patchTickets.generateRequest();
+    },
+    refreshTickets: function() {
+      this.$.getTickets.generateRequest();
     }
   });
   </script>

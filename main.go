@@ -14,15 +14,13 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	"github.com/asaskevich/govalidator"
+	"github.com/d4l3k/square-invoice-tickets/email"
 	"github.com/d4l3k/square-invoice-tickets/models"
 	"github.com/d4l3k/square-invoice-tickets/square"
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/jaytaylor/html2text"
 	"github.com/jinzhu/gorm"
-	"github.com/mailgun/mailgun-go"
-	"github.com/vanng822/go-premailer/premailer"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -32,11 +30,9 @@ var (
 	debug         = flag.Bool("debug", false, "whether to run in debug mode")
 	adminPassword = flag.String("pass", "", "the md5 hash of the admin password")
 
-	squareEmail   = flag.String("squareEmail", "", "the square email address")
-	squarePass    = flag.String("squarePass", "", "the square password")
-	mailgunKey    = flag.String("mg", "", "the mailgun api key")
-	mailgunPubKey = flag.String("mgPub", "", "the mailgun api pubkey")
-	currency      = flag.String("currency", "CAD", "the currency to use")
+	squareEmail = flag.String("squareEmail", "", "the square email address")
+	squarePass  = flag.String("squarePass", "", "the square password")
+	currency    = flag.String("currency", "CAD", "the currency to use")
 
 	priceGroup      = flag.Float64("priceGroup", 80, "the price for group tickets")
 	priceIndividual = flag.Float64("priceIndividual", 25, "the price for individual tickets")
@@ -58,7 +54,6 @@ func main() {
 
 type server struct {
 	db gorm.DB
-	mg mailgun.Mailgun
 }
 
 func newServer() (*server, error) {
@@ -78,8 +73,6 @@ func newServer() (*server, error) {
 	if err := db.AutoMigrate(&models.Ticket{}).Error; err != nil {
 		return nil, err
 	}
-
-	s.mg = mailgun.NewMailgun("ubccsss.org", *mailgunKey, "")
 
 	log.Printf("Password hash %s", *adminPassword)
 	auth := auth.NewBasicAuthenticator("localhost:8383", s.secret)
@@ -286,7 +279,8 @@ func (s *server) stats(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 func (s *server) tickets(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if r.Method == "POST" {
+	switch r.Method {
+	case "POST":
 		var req models.Ticket
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			s.err(w, err, 400)
@@ -297,6 +291,32 @@ func (s *server) tickets(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 			s.err(w, err, 500)
 			return
 		}
+	case "PATCH":
+		var req models.Ticket
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.err(w, err, 400)
+			return
+		}
+		if err := s.db.Where("id = ?", req.ID).Save(&req).Error; err != nil {
+			s.err(w, err, 500)
+			return
+		}
+	case "DELETE":
+		var req []*models.Ticket
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			s.err(w, err, 400)
+			return
+		}
+		for _, ticket := range req {
+			if err := s.db.Delete(ticket).Error; err != nil {
+				s.err(w, err, 400)
+				return
+			}
+		}
+	case "GET":
+	default:
+		s.err(w, fmt.Errorf("unknown method %s", r.Method), 400)
+		return
 	}
 	var records []*models.Ticket
 	if err := s.db.Find(&records).Error; err != nil {
@@ -662,55 +682,22 @@ func (s *server) pollSquare() {
 					continue
 				}
 				for i, ticket := range tickets {
-					email := `<p>Hey ` + ticket.FirstName + `,</p>
+					body := `<p>Hey ` + ticket.FirstName + `,</p>
 					<p>Here's your tickets for Happily Ever After - CSSS Year End Gala:</p>
 					<p>`
-					email += ticket.HTML()
+					body += ticket.HTML()
 
 					if i == 0 {
 						for _, ticket := range tickets[1:] {
-							email += ticket.HTML()
+							body += ticket.HTML()
 						}
 					}
-					email += `</p><p>See you at the gala!<br>The CSSS</p>`
-					if err := SendEmail(ticket.Email, "Happily Ever After - CSSS Year End Gala Tickets", email); err != nil {
+					body += `</p><p>See you at the gala!<br>The CSSS</p>`
+					if err := email.SendEmail(ticket.Email, "Happily Ever After - CSSS Year End Gala Tickets", body); err != nil {
 						log.Println("send email err", err)
 					}
 				}
 			}
 		}
 	}
-}
-
-func SendEmail(to, subj, body string) error {
-	pm := premailer.NewPremailerFromString(body, premailer.NewOptions())
-	message, err := pm.Transform()
-	if err != nil {
-		return err
-	}
-
-	mg := NewMG()
-
-	text, err := html2text.FromString(message)
-	if err != nil {
-		return err
-	}
-	m := mg.NewMessage(
-		"UBC CSSS <noreply@ubccsss.org>",
-		subj,
-		text,
-		to,
-	)
-	m.SetHtml(message)
-	log.Printf("To: %s\nSubj: %s\nText:\n%sHTML:\n%s", to, subj, text, message)
-	_, id, err := mg.Send(m)
-	if err != nil {
-		return err
-	}
-	log.Println(id)
-	return nil
-}
-
-func NewMG() mailgun.Mailgun {
-	return mailgun.NewMailgun("ubccsss.org", *mailgunKey, *mailgunPubKey)
 }
