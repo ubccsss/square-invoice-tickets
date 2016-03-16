@@ -121,8 +121,7 @@ p {
       if (!id) {
         return null;
       }
-      var url = 'http://natalie.fn.lc:8383/ticket/'+id;
-      return 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='+encodeURIComponent(url);
+      return 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data='+encodeURIComponent(window.location.toString());
     },
     error: function(e, err) {
       this.ticket = { FirstName: err.request.xhr.response.Error };
