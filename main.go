@@ -621,7 +621,7 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 }
 
 func (s *server) pollSquare() {
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for _ = range ticker.C {
 		sq, err := square.New(*squareEmail, *squarePass)
@@ -658,7 +658,10 @@ func (s *server) pollSquare() {
 				log.Println("db tickets err", err)
 				continue
 			}
-			if len(pr.Tickets) == 0 && invoice.State == "PAID" {
+			if len(pr.Tickets) != 0 {
+				continue
+			}
+			if invoice.State == "PAID" {
 				log.Printf("Found paid invoice %+v %+v", invoice, pr)
 				var tickets []models.Ticket
 				tickets = append(tickets, newTicket(pr.FirstName, pr.LastName, pr.PhoneNumber, pr.Email))
@@ -696,6 +699,18 @@ func (s *server) pollSquare() {
 					if err := email.SendEmail(ticket.Email, "Happily Ever After - CSSS Year End Gala Tickets", body); err != nil {
 						log.Println("send email err", err)
 					}
+				}
+			} else if invoice.State == "UNPAID" {
+				if time.Now().Add(-24 * time.Hour).Before(pr.CreatedAt) {
+					continue
+				}
+				log.Printf("old and needs to be removed %+v", invoice)
+				_, err := sq.CancelInvoice(&square.InvoiceCancelRequest{
+					Token: invoice.Token,
+					SendEmailToRecipients: false,
+				})
+				if err != nil {
+					log.Println("square invoice cancel err", err)
 				}
 			}
 		}

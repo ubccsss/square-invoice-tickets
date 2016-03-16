@@ -20,6 +20,7 @@ const (
 	subunitsURL             = "https://squareup.com/api/v1/multiunit/subunits"
 	invoiceServiceURL       = "https://squareup.com/services/squareup.invoice.service.InvoiceService/List"
 	invoiceServiceCreateURL = "https://squareup.com/services/squareup.invoice.service.InvoiceService/Create"
+	invoiceServiceCancelURL = "https://squareup.com/services/squareup.invoice.service.InvoiceService/Cancel"
 )
 
 var setupOnce sync.Once
@@ -227,6 +228,10 @@ type Time struct {
 	TZName            []string `json:"tz_name"`
 }
 
+func (t Time) Time() time.Time {
+	return time.Unix(int64(t.InstantUsec), 0)
+}
+
 type Invoice struct {
 	BuyerEnteredInstrumentEnabled bool   `json:"buyer_entered_instrument_enabled"`
 	CanBeScheduled                bool   `json:"can_be_scheduled"`
@@ -252,6 +257,7 @@ type Invoice struct {
 
 	Cart *Cart `json:"cart"`
 }
+
 type InvoiceListResponse struct {
 	NextCursor string     `json:"next_cursor"`
 	Invoice    []*Invoice `json:"invoice"`
@@ -342,7 +348,7 @@ type InvoiceCreateRequest struct {
 	UnitToken                string     `json:"unit_token"`
 }
 
-type InvoiceCreateResponse struct {
+type InvoiceResponse struct {
 	Success bool     `json:"success"`
 	Invoice *Invoice `json:"invoice"`
 }
@@ -358,7 +364,28 @@ func (c *Client) CreateInvoice(req *InvoiceCreateRequest) (*Invoice, error) {
 		return nil, fmt.Errorf("error creating square invoice %d, %s", code, body)
 	}
 	log.Printf("resp %s", body)
-	var resp InvoiceCreateResponse
+	var resp InvoiceResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Invoice, nil
+}
+
+type InvoiceCancelRequest struct {
+	SendEmailToRecipients bool   `json:"send_email_to_recipients"`
+	Token                 string `json:"token"`
+}
+
+func (c *Client) CancelInvoice(req *InvoiceCancelRequest) (*Invoice, error) {
+	body, code, err := c.makeRequest(invoiceServiceCancelURL, req, false)
+	if err != nil {
+		return nil, err
+	}
+	if code != 200 {
+		return nil, fmt.Errorf("error cancelling square invoice %d, %s", code, body)
+	}
+	log.Printf("resp %s", body)
+	var resp InvoiceResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
 	}
