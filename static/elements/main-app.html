@@ -58,6 +58,11 @@ h1 {
   lazy-pages {
     overflow: visible !important;
   }
+  img.preview {
+    margin: 0 auto;
+    max-width: 100%;
+    display: block;
+  }
     </style>
     <div class="content" fullwidth$="{{fullwidth}}">
       <lazy-pages attr-for-selected="data-route" selected="{{route}}">
@@ -71,11 +76,15 @@ h1 {
           <h1>Page not found</h1>
         </section>
         <section data-route="bought">
-          <h1>Tickets Purchased</h1>
+          <h1>Ticket Invoice Sent</h1>
           <p>
           You should receive an email from Square with an invoice to purchase the
           tickets shortly. Once you pay, you will receive an email with the tickets.
           </p>
+          <p>
+          It will look something like this:
+          </p>
+          <img class="preview" src="/purchase-request-preview.png">
         </section>
         <template is="dom-if" restamp data-route="ticket">
           <ticket-view id="[[params.id]]"></ticket-view>
