@@ -43,6 +43,7 @@ var (
 )
 
 func main() {
+	log.SetFlags(log.Flags() | log.Lshortfile)
 	flag.Parse()
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -407,7 +408,7 @@ func (s *server) priceEstimate(req *models.PurchaseRequest) (float64, error) {
 type DetailsResponse struct {
 	PromoCode *models.PromoCode
 	Price     string
-	Prices    map[models.PurchaseType]int
+	Prices    map[string]int
 }
 
 func (s *server) details(w http.ResponseWriter, r *http.Request) {
@@ -439,7 +440,7 @@ func (s *server) details(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(DetailsResponse{
 		PromoCode: promoCode,
 		Price:     fmt.Sprintf("%.2f", price),
-		Prices: map[models.PurchaseType]int{
+		Prices: map[string]int{
 			models.Group:        int(*priceGroup),
 			models.Individual:   int(*priceIndividual),
 			models.IndividualCS: int(*priceIndividualCS),
@@ -449,7 +450,7 @@ func (s *server) details(w http.ResponseWriter, r *http.Request) {
 
 func processReq(req *models.PurchaseRequest) error {
 	if len(req.Type) == 0 {
-		switch models.PurchaseType(req.RawType) {
+		switch req.RawType {
 		case models.Group:
 			req.Type = models.Group
 		case models.Individual:
@@ -621,7 +622,7 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 			},
 		},
 		DueOn:                 square.DueDate{}.FromTime(time.Now().Add(24 * time.Hour)),
-		InvoiceName:           "Happily Ever After - CSSS Year End Gala Tickets",
+		InvoiceName:           "CSSS Year End Gala Tickets",
 		IsDraft:               false,
 		MerchantInvoiceNumber: fmt.Sprintf("PurchaseRequest %d", pr.ID),
 		Payer: &square.Payer{
@@ -708,7 +709,7 @@ func (s *server) pollSquare() {
 				}
 				for i, ticket := range tickets {
 					body := `<p>Hey ` + ticket.FirstName + `,</p>
-					<p>Here's your tickets for Happily Ever After - CSSS Year End Gala:</p>
+					<p>Here's your tickets for the CSSS Year End Gala:</p>
 					<p>`
 					body += ticket.HTML()
 
@@ -718,7 +719,7 @@ func (s *server) pollSquare() {
 						}
 					}
 					body += `</p><p>See you at the gala!<br>The CSSS</p>`
-					if err := email.SendEmail(ticket.Email, "Happily Ever After - CSSS Year End Gala Tickets", body); err != nil {
+					if err := email.SendEmail(ticket.Email, "CSSS Year End Gala Tickets", body); err != nil {
 						log.Println("send email err", err)
 					}
 				}

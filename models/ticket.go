@@ -15,7 +15,7 @@ type PurchaseRequest struct {
 	Email       string `valid:"required,email"`
 	PhoneNumber string `valid:"required"`
 	RawType     string `valid:"required"`
-	Type        PurchaseType
+	Type        string
 
 	Status  string
 	Invoice *square.Invoice
@@ -58,12 +58,10 @@ type PromoCode struct {
 	DeletedAt *time.Time
 }
 
-type PurchaseType string
-
 const (
-	IndividualCS PurchaseType = "IndividualCS"
-	Individual   PurchaseType = "Individual"
-	Group        PurchaseType = "Group"
+	IndividualCS = "IndividualCS"
+	Individual   = "Individual"
+	Group        = "Group"
 )
 
 type Ticket struct {
