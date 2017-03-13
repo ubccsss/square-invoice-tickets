@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/d4l3k/square-invoice-tickets/square"
+	"github.com/ubccsss/square-invoice-tickets/square"
 )
 
 type PurchaseRequest struct {
 	ID          int
 	FirstName   string `valid:"required"`
 	LastName    string `valid:"required"`
+	StudentID   string `valid:"required"`
 	Email       string `valid:"required,email"`
 	PhoneNumber string `valid:"required"`
 	RawType     string `valid:"required"`
@@ -57,11 +58,12 @@ type PromoCode struct {
 	DeletedAt *time.Time
 }
 
-type PurchaseType int
+type PurchaseType string
 
 const (
-	Individual PurchaseType = iota
-	Group
+	IndividualCS PurchaseType = "IndividualCS"
+	Individual   PurchaseType = "Individual"
+	Group        PurchaseType = "Group"
 )
 
 type Ticket struct {

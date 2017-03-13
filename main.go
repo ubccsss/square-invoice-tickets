@@ -14,13 +14,13 @@ import (
 
 	"github.com/abbot/go-http-auth"
 	"github.com/asaskevich/govalidator"
-	"github.com/d4l3k/square-invoice-tickets/email"
-	"github.com/d4l3k/square-invoice-tickets/models"
-	"github.com/d4l3k/square-invoice-tickets/square"
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/ubccsss/square-invoice-tickets/email"
+	"github.com/ubccsss/square-invoice-tickets/models"
+	"github.com/ubccsss/square-invoice-tickets/square"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -34,9 +34,10 @@ var (
 	squarePass  = flag.String("squarePass", "", "the square password")
 	currency    = flag.String("currency", "CAD", "the currency to use")
 
-	priceGroup      = flag.Float64("priceGroup", 80, "the price for group tickets")
-	priceIndividual = flag.Float64("priceIndividual", 25, "the price for individual tickets")
-	maxTickets      = flag.Int("maxTickets", 18, "the number of tickets that can be sold")
+	priceGroup        = flag.Float64("priceGroup", 80, "the price for group tickets")
+	priceIndividual   = flag.Float64("priceIndividual", 60, "the price for individual tickets")
+	priceIndividualCS = flag.Float64("priceIndividualCS", 25, "the price for individual tickets in CS")
+	maxTickets        = flag.Int("maxTickets", 18, "the number of tickets that can be sold")
 
 	poll = flag.Bool("poll", true, "whether to poll square")
 )
@@ -53,7 +54,7 @@ func main() {
 }
 
 type server struct {
-	db gorm.DB
+	db *gorm.DB
 }
 
 func newServer() (*server, error) {
@@ -387,6 +388,9 @@ func (s *server) priceEstimate(req *models.PurchaseRequest) (float64, error) {
 
 	// Price code
 	basePrice := *priceIndividual
+	if req.Type == models.IndividualCS {
+		basePrice = *priceIndividualCS
+	}
 
 	promoCode, err := s.getPromoCode(req.PromoCode)
 	if err != nil {
@@ -403,6 +407,7 @@ func (s *server) priceEstimate(req *models.PurchaseRequest) (float64, error) {
 type DetailsResponse struct {
 	PromoCode *models.PromoCode
 	Price     string
+	Prices    map[models.PurchaseType]int
 }
 
 func (s *server) details(w http.ResponseWriter, r *http.Request) {
@@ -416,7 +421,7 @@ func (s *server) details(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var promoCode *models.PromoCode
-	if req.Type == models.Individual {
+	if req.Type != models.Group {
 		pc, err := s.getPromoCode(req.PromoCode)
 		if err != nil {
 			s.err(w, err, 400)
@@ -424,17 +429,34 @@ func (s *server) details(w http.ResponseWriter, r *http.Request) {
 		}
 		promoCode = pc
 	}
-	price, err := s.priceEstimate(req)
+	var price float64
+	var err error
+	price, err = s.priceEstimate(req)
 	if err != nil {
 		s.err(w, err, 500)
 		return
 	}
-	json.NewEncoder(w).Encode(DetailsResponse{PromoCode: promoCode, Price: fmt.Sprintf("%.2f", price)})
+	json.NewEncoder(w).Encode(DetailsResponse{
+		PromoCode: promoCode,
+		Price:     fmt.Sprintf("%.2f", price),
+		Prices: map[models.PurchaseType]int{
+			models.Group:        int(*priceGroup),
+			models.Individual:   int(*priceIndividual),
+			models.IndividualCS: int(*priceIndividualCS),
+		},
+	})
 }
 
 func processReq(req *models.PurchaseRequest) error {
-	if strings.Contains(req.RawType, "Group") {
-		req.Type = models.Group
+	if len(req.Type) == 0 {
+		switch models.PurchaseType(req.RawType) {
+		case models.Group:
+			req.Type = models.Group
+		case models.Individual:
+			req.Type = models.Individual
+		case models.IndividualCS:
+			req.Type = models.IndividualCS
+		}
 	}
 	if len(req.RawAfterPartyCount) > 0 {
 		count, err := strconv.Atoi(req.RawAfterPartyCount)

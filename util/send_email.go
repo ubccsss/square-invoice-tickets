@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/d4l3k/square-invoice-tickets/email"
+	"github.com/ubccsss/square-invoice-tickets/email"
 )
 
 var to = flag.String("to", "test@ubccsss.org", "who to send the poke to")

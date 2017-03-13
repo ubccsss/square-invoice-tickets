@@ -2,12 +2,27 @@
   <template>
     <style>
 :host {
-  @apply(--paper-font-body2);
-
   --primary-color: #2fa4e7;
   --h1-style: {
     color: var(--primary-color);
-    @apply(--paper-font-display2);
+  };
+  --paper-font-common-base: {
+    font-family: 'PT Sans',"Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  };
+  --paper-font-common-nowrap: {
+    @apply(--paper-font-common-base);
+  };
+  --paper-font-subhead: {
+    @apply(--paper-font-common-base);
+  };
+  --paper-font-subhead: {
+    @apply(--paper-font-common-base);
+  };
+  --paper-input-container-input: {
+    @apply(--paper-font-common-base);
   }
 }
 a {
@@ -70,7 +85,7 @@ h1 {
         <a href="/">Home</a>
         <a href="http://ubccsss.org/">UBC CSSS</a>
         <a href="/admin">Admin</a>
-        <a href="https://github.com/d4l3k/square-invoice-tickets">Source Code</a>
+        <a href="https://github.com/ubccsss/square-invoice-tickets">Source Code</a>
       </footer>
     </div>
   </template>

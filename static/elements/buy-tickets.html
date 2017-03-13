@@ -4,9 +4,6 @@
 h1 {
   @apply(--h1-style);
 }
-p {
-  @apply(--paper-font-body2);
-}
 paper-button {
   background-color: var(--primary-color);
   color: white;
@@ -16,24 +13,91 @@ paper-button {
   color: red;
 }
     .indent {
-      border-left: 2px solid grey;
+      border-left: 2px solid var(--primary-color);
       padding-left: 16px;
       margin-top: 16px;
     }
     .indent paper-input:first-child {
       margin-top: -8px;
     }
-    .form-inner[disabled] {
+    [disabled] {
       pointer-events: none;
-      opacity: 0.8;
+      opacity: 0.5;
     }
     @media (min-width: 900px) {
-      .inline paper-input, .inline gold-email-input, .inline gold-phone-input {
+      .inline {
+        display: flex;
+        align-items: flex-end;
+      }
+      .inline > * {
         display: inline-block !important;
+        margin-left: 16px;
+      }
+      .inline > *:first-child {
+        margin-left: 0;
       }
     }
     .price span {
       @apply(--paper-font-display1);
+    }
+    paper-menu  {
+      display: flex;
+      justify-content: space-around;
+    }
+    paper-item {
+      display: inline-flex;
+      flex-direction: column;
+      justify-content: space-between;
+      /*background-color: #eee;*/
+      border-radius: 10px;
+      padding: 20px;
+      width: 180px;
+      height: 280px;
+      margin: 20px;
+      color: var(--primary-color);
+      border: 2px solid var(--primary-color);
+      text-align: center;
+      cursor: pointer;
+    }
+    paper-item[selected] {
+      color: white;
+      background-color: var(--primary-color);
+      font-weight: normal !important;
+    }
+    .flex-expand {
+      flex-grow: 1000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+    }
+    price {
+      font-size: 32pt;
+      font-weight: 200;
+      margin: 1rem;
+      margin-bottom: 0;
+    }
+    label {
+      color: var(--primary-color);
+      font-weight: bold;
+      margin-top: 16px;
+      margin-bottom: -10px;
+      display: inline-block;
+    }
+    best-deal {
+      position: absolute;
+      right: -25px;
+      top: -10px;
+      transform: rotate(30deg);
+      font-size: 20px;
+      border-radius: 5px;
+      padding: 1px 10px;
+      color: white;
+      background-color: #2fa4e7;
+      border: 2px solid var(--primary-color);
+    }
+    paper-item[selected] best-deal {
+      color: #2fa4e7;
+      background-color: white;
     }
     </style>
     <h1>Happily Ever After - CSSS Year End Gala Tickets</h1>
@@ -46,48 +110,83 @@ paper-button {
       on-iron-form-response="response"
       >
       <div class="form-inner" disabled$="[[submitting]]">
-        <div class="inline">
-        <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
-        <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
-        <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
-        <gold-phone-input name="PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
-        </div>
 
-        <paper-dropdown-menu label="Ticket Type" name="RawType" required value="{{Type}}">
-          <paper-menu class="dropdown-content" selected="0">
-            <paper-item>Individual</paper-item>
-            <paper-item>Group (4 tickets)</paper-item>
-          </paper-menu>
-        </paper-dropdown-menu>
-        <template is="dom-if" if="[[group(Type)]]">
-          <div class="indent">
-            <label>Group Member 2</label>
-            <div class="inline">
-              <paper-input name="GroupMember2FirstName" label="First Name" required auto-validate></paper-input>
-              <paper-input name="GroupMember2LastName" label="Last Name" required auto-validate></paper-input>
-              <gold-email-input name="GroupMember2Email" label="Email Address" required auto-validate></gold-email-input>
-              <gold-phone-input name="GroupMember2PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
-            </div>
-            <label>Group Member 3</label>
-            <div class="inline">
-              <paper-input name="GroupMember3FirstName" label="First Name" required auto-validate></paper-input>
-              <paper-input name="GroupMember3LastName" label="Last Name" required auto-validate></paper-input>
-              <gold-email-input name="GroupMember3Email" label="Email Address" required auto-validate></gold-email-input>
-              <gold-phone-input name="GroupMember3PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
-            </div>
-            <label>Group Member 4</label>
-            <div class="inline">
-              <paper-input name="GroupMember4FirstName" label="First Name" required auto-validate></paper-input>
-              <paper-input name="GroupMember4LastName" label="Last Name" required auto-validate></paper-input>
-              <gold-email-input name="GroupMember4Email" label="Email Address" required auto-validate></gold-email-input>
-              <gold-phone-input name="GroupMember4PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
-            </div>
+        <input type="hidden" name="RawType" value="[[Type]]">
+        <paper-menu selected-attribute="selected"
+                    attr-for-selected="name"
+                    selected="{{Type}}">
+
+          <paper-item name="IndividualCS">
+            <h2>Individual</h2>
+            <span class="flex-expand">
+              <p>Computer Science Student</p>
+            </span>
+            <price>[[price("IndividualCS",details)]]</price>
+            <price-individual>[[pricePerson("IndividualCS",details,1)]]/person</price-individual>
+          </paper-item>
+          <paper-item name="Individual">
+            <h2>Individual</h2>
+            <span class="flex-expand">
+              <p>Non-Computer Science Student</p>
+            </span>
+            <price>[[price("Individual",details)]]</price>
+            <price-individual>[[pricePerson("Individual",details,1)]]/person</price-individual>
+          </paper-item>
+          <paper-item name="Group">
+            <best-deal>Best Deal!</best-deal>
+
+            <h2>Group of 4</h2>
+            <span class="flex-expand">
+              <p>Can include non-Computer Science students</p>
+            </span>
+            <price>[[price("Group",details)]]</price>
+            <price-individual>[[pricePerson("Group",details,4)]]/person</price-individual>
+          </paper-item>
+        </paper-menu>
+
+        <div disabled$="[[!Type]]">
+          <label>Your Information</label>
+          <div class="inline">
+            <paper-input name="FirstName" label="First Name" required auto-validate></paper-input>
+            <paper-input name="LastName" label="Last Name" required auto-validate></paper-input>
+            <paper-input name="StudentID" label="Student ID" required auto-validate></paper-input>
+            <gold-email-input name="Email" label="Email Address" required auto-validate></gold-email-input>
+            <gold-phone-input name="PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
           </div>
-        </template>
-        <paper-input type="number" name="RawAfterPartyCount" label="How many people will be attending the after party? (Party depends on interest.)" required></paper-input>
-        <paper-input name="PromoCode" label="Promo Code" value="{{PromoCode}}"></paper-input>
-        <template is="dom-if" if="[[details.PromoCode]]">
-          <p>
+
+          <template is="dom-if" if="[[group(Type)]]" restamp>
+            <div class="indent">
+              <label>Group Member 2</label>
+              <div class="inline">
+                <paper-input name="GroupMember2FirstName" label="First Name" required auto-validate></paper-input>
+                <paper-input name="GroupMember2LastName" label="Last Name" required auto-validate></paper-input>
+                <gold-email-input name="GroupMember2Email" label="Email Address" required auto-validate></gold-email-input>
+                <gold-phone-input name="GroupMember2PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+              </div>
+              <label>Group Member 3</label>
+              <div class="inline">
+                <paper-input name="GroupMember3FirstName" label="First Name" required auto-validate></paper-input>
+                <paper-input name="GroupMember3LastName" label="Last Name" required auto-validate></paper-input>
+                <gold-email-input name="GroupMember3Email" label="Email Address" required auto-validate></gold-email-input>
+                <gold-phone-input name="GroupMember3PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+              </div>
+              <label>Group Member 4</label>
+              <div class="inline">
+                <paper-input name="GroupMember4FirstName" label="First Name" required auto-validate></paper-input>
+                <paper-input name="GroupMember4LastName" label="Last Name" required auto-validate></paper-input>
+                <gold-email-input name="GroupMember4Email" label="Email Address" required auto-validate></gold-email-input>
+                <gold-phone-input name="GroupMember4PhoneNumber" label="Phone Number" required auto-validate></gold-phone-input>
+              </div>
+            </div>
+          </template>
+
+          <!--
+            <paper-input type="number" name="RawAfterPartyCount" label="How many people will be attending the after party? (Party depends on interest.)" required></paper-input>
+          -->
+
+          <paper-input name="PromoCode" label="Promo Code" value="{{PromoCode}}"></paper-input>
+          <template is="dom-if" if="[[details.PromoCode]]">
+            <p>
             Promo Code <span>[[details.PromoCode.ID]]</span>:
             <template is="dom-if" if="[[details.PromoCode.Amount]]">
               $<span>[[details.PromoCode.Amount]]</span>
@@ -96,14 +195,20 @@ paper-button {
               %<span>[[details.PromoCode.Percent]]</span>
             </template>
             off
-          </p>
-        </template>
+            </p>
+          </template>
+          <div class="error">[[error]]</div>
+          <br>
+          <center>
+            <paper-button raised on-tap="submit">
+              Buy
+              <template is="dom-if" if="[[details.Price]]">
+                - $<span>[[details.Price]]</span>
+              </template>
+            </paper-button>
+          </center>
+        </div>
       </div>
-      <div class="error">[[error]]</div>
-      <br>
-      <center>
-        <paper-button raised on-tap="submit">Buy - $<span>[[details.Price]]</span></paper-button>
-      </center>
     </form>
 
     <iron-ajax
@@ -120,13 +225,12 @@ paper-button {
     properties: {
       Type: {
         type: String,
-        observer: 'typeChange',
-      }
-    },
-    typeChange: function(val, old) {
-      if (old && old.indexOf("Group") >= 0) {
-        window.location.reload();
-      }
+        value: false,
+      },
+      details: {
+        type: Object,
+        value: {},
+      },
     },
     submit: function() {
       this.$.form.submit();
@@ -152,11 +256,19 @@ paper-button {
       this.error = '';
     },
     group: function(type) {
-      return type.includes('Group');
+      return type && type.includes('Group');
     },
     cartDetailsURL: function(Type, PromoCode) {
       this.error = '';
       return '/api/details?type='+encodeURIComponent(Type)+'&code='+encodeURIComponent(PromoCode);
+    },
+    price: function(type, details) {
+      const price = details.Prices && details.Prices[type];
+      return "$"+ (price ? price : '—');
+    },
+    pricePerson: function(type, details, count) {
+      const price = details.Prices && details.Prices[type];
+      return "$"+ (price ? price/count : '—');
     }
   });
   </script>
