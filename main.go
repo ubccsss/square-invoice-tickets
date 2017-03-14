@@ -525,7 +525,7 @@ func (s *server) createRequestAndInvoice(req *models.PurchaseRequest) error {
 }
 
 type changeEmailRequest struct {
-	PurchaseRequestID int
+	PurchaseRequestID string
 	NewEmail          string
 }
 
@@ -541,8 +541,14 @@ func (s *server) changeEmail(w http.ResponseWriter, r *auth.AuthenticatedRequest
 		return
 	}
 
+	id, err := strconv.Atoi(req.PurchaseRequestID)
+	if err != nil {
+		s.err(w, err, 400)
+		return
+	}
+
 	var pr models.PurchaseRequest
-	if err := s.db.Find(&pr, req.PurchaseRequestID).Error; err != nil {
+	if err := s.db.Find(&pr, id).Error; err != nil {
 		s.err(w, err, 400)
 		return
 	}
