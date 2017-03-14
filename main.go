@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/pkg/errors"
 	"github.com/ubccsss/square-invoice-tickets/email"
 	"github.com/ubccsss/square-invoice-tickets/models"
 	"github.com/ubccsss/square-invoice-tickets/square"
@@ -92,6 +93,7 @@ func newServer() (*server, error) {
 
 	apiPost := api.Methods("POST").Subrouter()
 	apiPost.HandleFunc("/buy", s.buy)
+	apiPost.HandleFunc("/changeEmail", auth.Wrap(s.changeEmail))
 
 	r.HandleFunc("/", index)
 	r.PathPrefix("/").Handler(NotFoundHook{http.FileServer(http.Dir("./static/"))})
@@ -491,7 +493,7 @@ func (s *server) buy(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Charged = price
 
-	if err := s.db.Create(&req).Error; err != nil {
+	if err := s.createRequestAndInvoice(&req); err != nil {
 		s.err(w, err, 500)
 		return
 	}
@@ -510,8 +512,44 @@ func (s *server) buy(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
 
-	if err := SendInvoice(&req); err != nil {
+func (s *server) createRequestAndInvoice(req *models.PurchaseRequest) error {
+	if err := s.db.Create(req).Error; err != nil {
+		return err
+	}
+	if err := SendInvoice(req); err != nil {
+		return err
+	}
+	return nil
+}
+
+type changeEmailRequest struct {
+	PurchaseRequestID int
+	NewEmail          string
+}
+
+func (s *server) changeEmail(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	var req changeEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.err(w, err, 400)
+		return
+	}
+
+	if len(req.NewEmail) == 0 {
+		s.err(w, errors.Errorf("NewEmail must be longer than 0"), 400)
+		return
+	}
+
+	var pr models.PurchaseRequest
+	if err := s.db.Find(&pr, req.PurchaseRequestID).Error; err != nil {
+		s.err(w, err, 400)
+		return
+	}
+	pr.Email = req.NewEmail
+	pr.ID = 0
+
+	if err := s.createRequestAndInvoice(&pr); err != nil {
 		s.err(w, err, 500)
 		return
 	}

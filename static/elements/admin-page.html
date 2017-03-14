@@ -186,6 +186,12 @@ paper-button {
       <paper-button raised on-tap="newPromoCode">Create</paper-button>
     </form>
 
+    <form is="iron-form" id="changeEmail" method="post" action="/api/changeEmail" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="reload">
+      <paper-input name="PurchaseRequestID" label="Purchase Request ID" required auto-validate></paper-input>
+      <paper-input name="NewEmail" label="NewEmail" required auto-validate></paper-input>
+      <paper-button raised on-tap="changeEmail">Change</paper-button>
+    </form>
+
     <iron-ajax
             auto
             url="/api/promoCodes"
@@ -214,6 +220,9 @@ paper-button {
     },
     newTicket: function() {
       this.$.newTicket.submit();
+    },
+    changeEmail: function() {
+      this.$.changeEmail.submit();
     },
     observers: [
       'changedPromoCode(promoCodes.*)',
