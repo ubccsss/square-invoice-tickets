@@ -565,7 +565,7 @@ func (s server) secret(user, realm string) string {
 	return ""
 }
 
-func newTicket(first, last, phone, email string) models.Ticket {
+func newTicket(first, last, phone, email string, purchaseRequestID int) models.Ticket {
 	id := petname.Generate(3, "-")
 	return models.Ticket{
 		ID:          id,
@@ -573,6 +573,8 @@ func newTicket(first, last, phone, email string) models.Ticket {
 		LastName:    last,
 		PhoneNumber: phone,
 		Email:       email,
+
+		PurchaseRequestID: purchaseRequestID,
 	}
 }
 
@@ -687,15 +689,15 @@ func (s *server) pollSquare() {
 			if invoice.State == "PAID" {
 				log.Printf("Found paid invoice %+v %+v", invoice, pr)
 				var tickets []models.Ticket
-				tickets = append(tickets, newTicket(pr.FirstName, pr.LastName, pr.PhoneNumber, pr.Email))
+				tickets = append(tickets, newTicket(pr.FirstName, pr.LastName, pr.PhoneNumber, pr.Email, id))
 
 				if pr.Type == models.Group {
 					tickets = append(tickets, newTicket(pr.GroupMember2FirstName,
-						pr.GroupMember2LastName, pr.GroupMember2PhoneNumber, pr.GroupMember2Email))
+						pr.GroupMember2LastName, pr.GroupMember2PhoneNumber, pr.GroupMember2Email, id))
 					tickets = append(tickets, newTicket(pr.GroupMember3FirstName,
-						pr.GroupMember3LastName, pr.GroupMember3PhoneNumber, pr.GroupMember3Email))
+						pr.GroupMember3LastName, pr.GroupMember3PhoneNumber, pr.GroupMember3Email, id))
 					tickets = append(tickets, newTicket(pr.GroupMember4FirstName,
-						pr.GroupMember4LastName, pr.GroupMember4PhoneNumber, pr.GroupMember4Email))
+						pr.GroupMember4LastName, pr.GroupMember4PhoneNumber, pr.GroupMember4Email, id))
 				}
 				for _, ticket := range tickets {
 					if err := s.db.Create(&ticket).Error; err != nil {
@@ -703,10 +705,12 @@ func (s *server) pollSquare() {
 						return
 					}
 				}
-				if err := s.db.First(&pr, id).Update("Tickets", tickets).Error; err != nil {
-					log.Println("db err", err)
-					continue
-				}
+				/*
+					if err := s.db.First(&pr, id).Update("Tickets", tickets).Error; err != nil {
+						log.Println("db err", err)
+						continue
+					}
+				*/
 				for i, ticket := range tickets {
 					body := `<p>Hey ` + ticket.FirstName + `,</p>
 					<p>Here's your tickets for the CSSS Year End Gala:</p>
