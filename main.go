@@ -38,7 +38,7 @@ var (
 	priceGroup        = flag.Float64("priceGroup", 80, "the price for group tickets")
 	priceIndividual   = flag.Float64("priceIndividual", 60, "the price for individual tickets")
 	priceIndividualCS = flag.Float64("priceIndividualCS", 25, "the price for individual tickets in CS")
-	maxTickets        = flag.Int("maxTickets", 18, "the number of tickets that can be sold")
+	maxTickets        = flag.Int("maxTickets", 160, "the number of tickets that can be sold")
 
 	poll = flag.Bool("poll", true, "whether to poll square")
 )
