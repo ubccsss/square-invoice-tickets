@@ -195,6 +195,13 @@ paper-button {
       <paper-button raised on-tap="changeEmail">Change</paper-button>
     </form>
 
+    <h3>Bulk Ingress PurchaseRequest</h3>
+    <form is="iron-form" id="bulkPurchase" method="post" action="/api/buybulk" content-type="application/json" on-iron-form-error="errorHandler" on-iron-form-response="reload">
+      <paper-textarea name="csv" label="CSV (name, studentid, email, phone)" required
+      auto-validate></paper-textarea>
+      <paper-button raised on-tap="bulkPurchase">Create</paper-button>
+    </form>
+
     <iron-ajax
             auto
             url="/api/promoCodes"
@@ -220,6 +227,9 @@ paper-button {
     is: 'admin-page',
     newPromoCode: function() {
       this.$.newPromoCode.submit();
+    },
+    bulkPurchase: function() {
+      this.$.bulkPurchase.submit();
     },
     newTicket: function() {
       this.$.newTicket.submit();

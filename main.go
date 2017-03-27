@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -93,6 +95,7 @@ func newServer() (*server, error) {
 
 	apiPost := api.Methods("POST").Subrouter()
 	apiPost.HandleFunc("/buy", s.buy)
+	apiPost.HandleFunc("/buybulk", auth.Wrap(s.buyBulk))
 	apiPost.HandleFunc("/changeEmail", auth.Wrap(s.changeEmail))
 
 	r.HandleFunc("/", index)
@@ -510,6 +513,68 @@ func (s *server) buy(w http.ResponseWriter, r *http.Request) {
 				s.err(w, err, 500)
 				return
 			}
+		}
+	}
+}
+
+func (s *server) buyBulk(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	var req struct {
+		CSV string
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.err(w, err, 400)
+		return
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString(req.CSV)
+	reader := csv.NewReader(&buf)
+	records, err := reader.ReadAll()
+	if err != nil {
+		s.err(w, err, 400)
+		return
+	}
+	var reqs []models.PurchaseRequest
+	for _, rec := range records {
+		if len(rec) != 4 {
+			s.err(w, errors.Errorf("need fields 4 records, got %d", len(rec)), 400)
+			return
+		}
+		parts := strings.Split(rec[0], " ")
+		lastName := parts[len(parts)-1]
+		firstName := strings.Join(parts[:len(parts)-1], " ")
+		req := models.PurchaseRequest{
+			FirstName:   firstName,
+			LastName:    lastName,
+			StudentID:   rec[1],
+			Email:       rec[2],
+			PhoneNumber: rec[3],
+			RawType:     "IndividualCS",
+		}
+		if err := processReq(&req); err != nil {
+			s.err(w, err, 400)
+			return
+		}
+		if err := s.ValidatePurchaseRequest(&req); err != nil {
+			s.err(w, err, 400)
+			return
+		}
+
+		price, err := s.priceEstimate(&req)
+		if err != nil {
+			s.err(w, err, 500)
+			return
+		}
+		req.Charged = price
+		reqs = append(reqs, req)
+	}
+
+	log.Printf("%#v", reqs)
+
+	for _, req := range reqs {
+		if err := s.createRequestAndInvoice(&req); err != nil {
+			s.err(w, err, 500)
+			return
 		}
 	}
 }
