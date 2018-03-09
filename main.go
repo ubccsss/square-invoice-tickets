@@ -99,7 +99,7 @@ func newServer() (*server, error) {
 	apiPost.HandleFunc("/changeEmail", auth.Wrap(s.changeEmail))
 
 	r.HandleFunc("/", index)
-	r.PathPrefix("/").Handler(NotFoundHook{http.FileServer(http.Dir("./static/"))})
+	r.PathPrefix("/").Handler(notFoundHook{http.FileServer(http.Dir("./static/"))})
 	http.Handle("/", r)
 
 	return s, nil
@@ -133,11 +133,11 @@ func (hrw *hookedResponseWriter) Write(p []byte) (int, error) {
 	return hrw.ResponseWriter.Write(p)
 }
 
-type NotFoundHook struct {
+type notFoundHook struct {
 	h http.Handler
 }
 
-func (nfh NotFoundHook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (nfh notFoundHook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	nfh.h.ServeHTTP(&hookedResponseWriter{ResponseWriter: w, r: r}, r)
 }
 
@@ -754,14 +754,22 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 	return nil
 }
 
+const loginTime = 24 * time.Hour
+
 func (s *server) pollSquare() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	for _ = range ticker.C {
-		sq, err := square.New(*squareEmail, *squarePass)
-		if err != nil {
-			log.Println("square err", err)
-			continue
+	var sq *square.Client
+	var t time.Time
+	for range ticker.C {
+		if t.Before(time.Now().Add(-loginTime)) || sq == nil {
+			var err error
+			sq, err = square.New(*squareEmail, *squarePass)
+			if err != nil {
+				log.Println("square err", err)
+				continue
+			}
+			t = time.Now()
 		}
 		invoices, err := sq.Invoices()
 		if err != nil {
