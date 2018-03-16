@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -86,6 +87,39 @@ type Client struct {
 	merchantToken, unitToken string
 }
 
+func NewCookies(rawCookies string) (*Client, error) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	header := http.Header{}
+	header.Add("Cookie", rawCookies)
+	request := http.Request{
+		Header: header,
+	}
+	cookies := request.Cookies()
+	for _, c := range cookies {
+		c.Domain = ".squareup.com"
+	}
+
+	url, err := url.Parse("http://squareup.com/")
+	if err != nil {
+		return nil, err
+	}
+	jar.SetCookies(url, cookies)
+
+	c := &Client{
+		http: &http.Client{
+			Jar: jar,
+		},
+	}
+	if err := c.init(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
 func New(user, pass string) (*Client, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -99,22 +133,28 @@ func New(user, pass string) (*Client, error) {
 	if err := c.login(user, pass); err != nil {
 		return nil, err
 	}
+	if err := c.init(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
 
+func (c *Client) init() error {
 	nav, err := c.GetNavigation()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	c.merchantToken = nav.Token
 
 	subunits, err := c.GetSubUnits()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if len(subunits.Entities) > 0 {
 		entity := subunits.Entities[0]
 		c.unitToken = entity.Token
 	}
-	return c, err
+	return nil
 }
 
 type NavigationResponse struct {

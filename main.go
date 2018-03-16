@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/abbot/go-http-auth"
@@ -33,9 +34,10 @@ var (
 	debug         = flag.Bool("debug", false, "whether to run in debug mode")
 	adminPassword = flag.String("pass", "", "the md5 hash of the admin password")
 
-	squareEmail = flag.String("squareEmail", "", "the square email address")
-	squarePass  = flag.String("squarePass", "", "the square password")
-	currency    = flag.String("currency", "CAD", "the currency to use")
+	squareCookies = flag.String("squareCookies", "", "the square cookies")
+	squareEmail   = flag.String("squareEmail", "", "the square email address")
+	squarePass    = flag.String("squarePass", "", "the square password")
+	currency      = flag.String("currency", "CAD", "the currency to use")
 
 	priceGroup        = flag.Float64("priceGroup", 120, "the price for group tickets")
 	priceIndividual   = flag.Float64("priceIndividual", 35, "the price for individual tickets")
@@ -169,7 +171,7 @@ func (s *server) purchaseRequests(w http.ResponseWriter, r *auth.AuthenticatedRe
 		return
 	}
 	m := make(map[int]*square.Invoice)
-	sq, err := square.New(*squareEmail, *squarePass)
+	sq, err := squareLogin()
 	if err != nil {
 		s.err(w, err, 500)
 		return
@@ -237,7 +239,7 @@ func (s *server) ticket(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) square(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	w.Header().Set("Content-Type", "application/json")
-	sq, err := square.New(*squareEmail, *squarePass)
+	sq, err := squareLogin()
 	if err != nil {
 		s.err(w, err, 500)
 		return
@@ -744,7 +746,7 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 		},
 		RequestedMoney: amt,
 	}
-	sq, err := square.New(*squareEmail, *squarePass)
+	sq, err := squareLogin()
 	if err != nil {
 		return err
 	}
@@ -756,29 +758,49 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 	return nil
 }
 
-const loginTime = 24 * time.Hour
+const loginTime = 7 * 24 * time.Hour
+
+var (
+	client       *square.Client
+	clientUpdate time.Time
+	clientMu     sync.Mutex
+)
+
+func squareLogin() (*square.Client, error) {
+	clientMu.Lock()
+	defer clientMu.Unlock()
+
+	if clientUpdate.Before(time.Now().Add(-loginTime)) || client == nil {
+		var err error
+		if len(*squareCookies) > 0 {
+			client, err = square.NewCookies(*squareCookies)
+		} else {
+			client, err = square.New(*squareEmail, *squarePass)
+		}
+		if err != nil {
+			return nil, err
+		}
+		clientUpdate = time.Now()
+	}
+
+	return client, nil
+}
 
 func (s *server) pollSquare() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	var sq *square.Client
-	var t time.Time
 	for range ticker.C {
-		if t.Before(time.Now().Add(-loginTime)) || sq == nil {
-			var err error
-			sq, err = square.New(*squareEmail, *squarePass)
-			if err != nil {
-				log.Println("square err", err)
-				continue
-			}
-			t = time.Now()
+		sq, err := squareLogin()
+		if err != nil {
+			log.Println("square err", err)
+			continue
 		}
 		invoices, err := sq.Invoices()
 		if err != nil {
 			log.Println("square err", err)
 			continue
 		}
-		log.Printf("invoices %+v", invoices)
+		log.Printf("invoices %d", len(invoices))
 		for _, invoice := range invoices {
 			if !strings.HasPrefix(invoice.MerchantInvoiceNumber, PRKey+" ") {
 				continue
