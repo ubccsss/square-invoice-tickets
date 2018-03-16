@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -100,7 +102,7 @@ func NewCookies(rawCookies string) (*Client, error) {
 	}
 	cookies := request.Cookies()
 	for _, c := range cookies {
-		c.Domain = ".squareup.com"
+		c.Domain = "squareup.com"
 	}
 
 	url, err := url.Parse("http://squareup.com/")
@@ -142,13 +144,13 @@ func New(user, pass string) (*Client, error) {
 func (c *Client) init() error {
 	nav, err := c.GetNavigation()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "GetNavigation")
 	}
 	c.merchantToken = nav.Token
 
 	subunits, err := c.GetSubUnits()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "GetSubUnits")
 	}
 	if len(subunits.Entities) > 0 {
 		entity := subunits.Entities[0]
