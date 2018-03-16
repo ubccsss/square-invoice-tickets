@@ -76,7 +76,7 @@ func (c *Client) makeRequest(url string, body interface{}, get bool) ([]byte, in
 	buf, _ := ioutil.ReadAll(resp.Body)
 	var errResp Error
 	if err := json.Unmarshal(buf, &errResp); err != nil {
-		return nil, 0, err
+		return nil, 0, errors.Wrapf(err, "body: %s", string(buf))
 	}
 	if errResp.Success != nil && *errResp.Success == false {
 		return nil, 0, fmt.Errorf("error %s", buf)
