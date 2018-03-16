@@ -12,7 +12,7 @@ import (
 var (
 	Key    = flag.String("mg", "", "the mailgun api key")
 	PubKey = flag.String("mgPub", "", "the mailgun api pubkey")
-	Domain = flag.String("mgDomain", "ubccsss.org", "the email domain")
+	Domain = flag.String("mgDomain", "mg.ubccsss.org", "the email domain")
 )
 
 func NewMG() mailgun.Mailgun {
@@ -33,7 +33,7 @@ func SendEmail(to, subj, body string) error {
 		return err
 	}
 	m := mg.NewMessage(
-		"UBC CSSS <noreply@ubccsss.org>",
+		"UBC CSSS <noreply@mg.ubccsss.org>",
 		subj,
 		text,
 		to,
