@@ -58,15 +58,16 @@ func (c *Client) makeRequest(url string, body interface{}, get bool) ([]byte, in
 			csrf = cookie.Value
 		}
 	}
+	log.Printf("X-CSRF-Token: %q", csrf)
 	req.Header.Set("X-CSRF-Token", csrf)
 	if len(c.merchantToken) > 0 {
 		req.Header.Set("X-Merchant-Token", c.merchantToken)
 	}
-	req.Header.Set("Host", "api.squareup.com")
+	req.Header.Set("Host", "squareup.com")
 	req.Header.Set("Origin", originURL)
 	req.Header.Set("Referer", loginURL)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36")
-	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.167 Safari/537.36")
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -101,15 +102,13 @@ func NewCookies(rawCookies string) (*Client, error) {
 		Header: header,
 	}
 	cookies := request.Cookies()
-	for _, c := range cookies {
-		c.Domain = "squareup.com"
+	for _, path := range []string{"https://squareup.com", "https://api.squareup.com"} {
+		url, err := url.Parse(path)
+		if err != nil {
+			return nil, err
+		}
+		jar.SetCookies(url, cookies)
 	}
-
-	url, err := url.Parse("http://squareup.com/")
-	if err != nil {
-		return nil, err
-	}
-	jar.SetCookies(url, cookies)
 
 	c := &Client{
 		http: &http.Client{
