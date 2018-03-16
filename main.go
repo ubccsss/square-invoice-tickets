@@ -37,13 +37,15 @@ var (
 	squarePass  = flag.String("squarePass", "", "the square password")
 	currency    = flag.String("currency", "CAD", "the currency to use")
 
-	priceGroup        = flag.Float64("priceGroup", 80, "the price for group tickets")
-	priceIndividual   = flag.Float64("priceIndividual", 60, "the price for individual tickets")
-	priceIndividualCS = flag.Float64("priceIndividualCS", 25, "the price for individual tickets in CS")
+	priceGroup        = flag.Float64("priceGroup", 120, "the price for group tickets")
+	priceIndividual   = flag.Float64("priceIndividual", 35, "the price for individual tickets")
+	priceIndividualCS = flag.Float64("priceIndividualCS", 35, "the price for individual tickets in CS")
 	maxTickets        = flag.Int("maxTickets", 160, "the number of tickets that can be sold")
 
 	poll = flag.Bool("poll", true, "whether to poll square")
 )
+
+const PRKey = "PurchaseRequest2018"
 
 func main() {
 	log.SetFlags(log.Flags() | log.Lshortfile)
@@ -178,7 +180,7 @@ func (s *server) purchaseRequests(w http.ResponseWriter, r *auth.AuthenticatedRe
 		return
 	}
 	for _, invoice := range invoices {
-		if !strings.HasPrefix(invoice.MerchantInvoiceNumber, "PurchaseRequest ") {
+		if !strings.HasPrefix(invoice.MerchantInvoiceNumber, PRKey+" ") {
 			continue
 		}
 		bits := strings.Split(invoice.MerchantInvoiceNumber, " ")
@@ -735,7 +737,7 @@ func SendInvoice(pr *models.PurchaseRequest) error {
 		DueOn:                 square.DueDate{}.FromTime(time.Now().Add(24 * time.Hour)),
 		InvoiceName:           "CSSS Year End Gala Tickets",
 		IsDraft:               false,
-		MerchantInvoiceNumber: fmt.Sprintf("PurchaseRequest %d", pr.ID),
+		MerchantInvoiceNumber: fmt.Sprintf("%s %d", PRKey, pr.ID),
 		Payer: &square.Payer{
 			DisplayName: pr.FirstName + " " + pr.LastName,
 			Email:       pr.Email,
@@ -778,7 +780,7 @@ func (s *server) pollSquare() {
 		}
 		log.Printf("invoices %+v", invoices)
 		for _, invoice := range invoices {
-			if !strings.HasPrefix(invoice.MerchantInvoiceNumber, "PurchaseRequest ") {
+			if !strings.HasPrefix(invoice.MerchantInvoiceNumber, PRKey+" ") {
 				continue
 			}
 			bits := strings.Split(invoice.MerchantInvoiceNumber, " ")

@@ -113,42 +113,45 @@ paper-button {
     a:hover {
       opacity: 0.8;
     }
+    .description img {
+      max-width: 100%;
+      display: block;
+      margin: 10px auto;
+    }
     </style>
     <div class="description">
-    <h1><code>final(e){}</code>: A CSSS Year End Masquerade</h1>
+    <img src="/img/ticket.png">
+    <h1>CSSS Presents: The Natural Recursion</h1>
 
     <p>
-    You are a secret agent sent to infiltrate a masquerade party attended by top computer scientists in the world to steal a top-secret prime factorization algorithm. Since everyone is behind a mask, you can easily hide your true identity. But little did you know there are other spies hiding among the masked participants at the party...
+    It’s the end of one year, which marks the beginning of the next. Come party with your friends, and celebrate the end of assignments, deadlines, and exams. Or, is it just the beginning of new classes, new skills, and new friends?
     </p>
     <p>
-    Celebrate the end of classes and have a nice break before the start of exams by coming to our biggest event of the year! Get ready for a night filled with fun spy-themed activities, prizes and dancing at a beautiful venue.
+    Come for a night of great food, tasty drinks, music and an amazing time! Come celebrate the end of classes, and take a break before exams! Come enjoy our biggest event of the year, all at a beautiful venue!
     </p>
     <p>
-    We will be providing a catered dinner with amazing dessert and, of course, drinks. There will be also be a photobooth and DJ.
+    We’ll be providing a catered dinner with top quality entrees, desserts, and more. Of course, we’ll provide the drinks!
     </p>
     <h2>Dress code</h2>
     <p>
-    Formal,  Bring Your Own Mask (but we can provide one if you don't have one)
+    Formal
     </p>
     <h2>Date</h2>
     <p>
-    April 8th, 2017
+    April 7th, 2018, 6:00 PM
     </p>
     <h2>Location</h2>
     <p>
-    <a href="https://www.google.ca/maps/dir/''/diamond+ballroom+vancouver/@49.2650125,-123.2074581,12z/data=!3m1!4b1!4m8!4m7!1m0!1m5!1m1!1s0x548673c7b135520f:0x52a9fa9ff33a8414!2m2!1d-123.1374185!2d49.2650337">
-      Diamond Ballroom & Catering
+    <a href="https://goo.gl/maps/ttCFCN76yVw">
+      The Gallery
       <br>
-      1495 W 8th Ave #4
+      AMS Nest
       <br>
-      Vancouver, BC V6H 1C9
+      UBC
     </a>
     </p>
     <p>
     We will be selling three rounds of tickets, priced according to time of purchase. Buy your tickets early to get the biggest discount!
-    </p>
-    <p>
-    If you are currently taking a CS course and intend to pursue a major that includes CS, you can buy at the CS student price.
     </p>
     </div>
 
@@ -178,12 +181,16 @@ Due to an overwhelming interest in our event this year, we are now sold out.
 
           <paper-item name="IndividualCS">
             <h2>Individual</h2>
+            <!--
             <span class="flex-expand">
               <p>Computer Science Student</p>
             </span>
+            -->
             <price>[[price("IndividualCS",details)]]</price>
             <price-individual>[[pricePerson("IndividualCS",details,1)]]/person</price-individual>
           </paper-item>
+
+          <!--
           <paper-item name="Individual">
             <h2>Individual</h2>
             <span class="flex-expand">
@@ -192,13 +199,18 @@ Due to an overwhelming interest in our event this year, we are now sold out.
             <price>[[price("Individual",details)]]</price>
             <price-individual>[[pricePerson("Individual",details,1)]]/person</price-individual>
           </paper-item>
+          -->
+
+
           <paper-item name="Group">
             <best-deal>Best Deal!</best-deal>
 
             <h2>Group of 4</h2>
+            <!--
             <span class="flex-expand">
               <p>Can include non-Computer Science students</p>
             </span>
+            -->
             <price>[[price("Group",details)]]</price>
             <price-individual>[[pricePerson("Group",details,4)]]/person</price-individual>
           </paper-item>
